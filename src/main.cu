@@ -13,11 +13,6 @@
 #include <iostream>
 using namespace std;
 
-// uncomment to use the camera
-//#define CAMERA
-
-
-
 
 
 int main(int argc, char **argv)
@@ -36,14 +31,11 @@ int main(int argc, char **argv)
     //
     // return value: getParam("param", ...) returns true if "-param" is specified, and false otherwise
 
-#ifdef CAMERA
-#else
     // input image
     string image = "";
     bool ret = getParam("i", image, argc, argv);
     if (!ret) cerr << "ERROR: no image specified" << endl;
     if (argc <= 1) { cout << "Usage: " << argv[0] << " -i <image> [-repeats <repeats>] [-gray]" << endl; return 1; }
-#endif
     
     // number of computation repetitions to get a better run time measurement
     int repeats = 1;
@@ -60,29 +52,12 @@ int main(int argc, char **argv)
 
 
 
-    // Init camera / Load input image
-#ifdef CAMERA
-
-    // Init camera
-  	cv::VideoCapture camera(0);
-  	if(!camera.isOpened()) { cerr << "ERROR: Could not open camera" << endl; return 1; }
-    int camW = 640;
-    int camH = 480;
-  	camera.set(CV_CAP_PROP_FRAME_WIDTH,camW);
-  	camera.set(CV_CAP_PROP_FRAME_HEIGHT,camH);
-    // read in first frame to get the dimensions
-    cv::Mat mIn;
-    camera >> mIn;
-    
-#else
     
     // Load the input image using opencv (load as grayscale if "gray==true", otherwise as is (may be color or grayscale))
     cv::Mat mIn = cv::imread(image.c_str(), (gray? CV_LOAD_IMAGE_GRAYSCALE : -1));
     // check
     if (mIn.data == NULL) { cerr << "ERROR: Could not load image " << image << endl; return 1; }
     
-#endif
-
     // convert to float representation (opencv loads image values as single bytes by default)
     mIn.convertTo(mIn,CV_32F);
     // convert range of each channel to [0,1] (opencv default is [0,255])
@@ -125,20 +100,6 @@ int main(int argc, char **argv)
 
 
 
-    // For camera mode: Make a loop to read in camera frames
-#ifdef CAMERA
-    // Read a camera image frame every 30 milliseconds:
-    // cv::waitKey(30) waits 30 milliseconds for a keyboard input,
-    // returns a value <0 if no key is pressed during this time, returns immediately with a value >=0 if a key is pressed
-    while (cv::waitKey(30) < 0)
-    {
-    // Get camera image
-    camera >> mIn;
-    // convert to float representation (opencv loads image values as single bytes by default)
-    mIn.convertTo(mIn,CV_32F);
-    // convert range of each channel to [0,1] (opencv default is [0,255])
-    mIn /= 255.f;
-#endif
 
     // Init raw input image array
     // opencv images are interleaved: rgb rgb rgb...  (actually bgr bgr bgr...)
@@ -174,13 +135,8 @@ int main(int argc, char **argv)
 
     // ### Display your own output images here as needed
 
-#ifdef CAMERA
-    // end of camera loop
-    }
-#else
     // wait for key inputs
     cv::waitKey(0);
-#endif
 
 
 

@@ -33,7 +33,6 @@ cmake .
 make
 ```
 
-To compile the 
 
 ##Style Guide
 

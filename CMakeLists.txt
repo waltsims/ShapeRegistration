@@ -8,13 +8,17 @@ if(CUDA_FOUND)
 	include_directories(${OpenCV_INCLUDE_DIRS})
 	#find_package(libpng REQUIRED)
 
+	include_directories(src/)
 	#specify binary name and source files to build
 
 	set ( CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --ptxas-options=-v --use_fast_math 
 	--compiler-options -Wall -lopencvhighgui -lopencv_core )
 	
 
-	cuda_add_executable(sr src/main.cu src/helper.cu src/helper.h)
+
+	include_directories("3rdparty/png++-0.2.9")
+	
+	cuda_add_executable(sr src/main.cu src/helper.cu )
 
 	target_link_libraries(sr ${CUDA_LIBARIES} ${OpenCV_LIBS})
 else()

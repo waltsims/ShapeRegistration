@@ -14,6 +14,39 @@
 using namespace std;
 
 
+/** calculate moment of the image
+ *  \param[in] imgIn         input image
+ *  \param[in] w             size of width of the image
+ *  \param[in] h             size of height of the image
+ *  \param[in] nc            the number of channels of the image
+ *  \param[out] mmt          an array for moments of the image
+ *  \param[out] mmtDegree    the degree of moments
+ *
+ *  \retrun nothing
+ *  \note pseudo code of geometric moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
+ */ 
+void imageMoment(float *imgIn, size_t w, size_t h, size_t nc, float *mmt, size_t mmtDegree)
+{
+  for (int p = 0 ; p < mmtDegree ; p++)
+  {
+     for (int q = 0 ; q < mmtDegree ; p++)
+     {
+        mmt[p + p*q] = 0;
+
+        for (int c = 0; c < w ; c++)
+        {
+           for (int y = 0; y < w ; y++)
+           {
+              for (int x = 0; x < w ; x++)
+              {
+                   mmt[p + (p*q)] += pow(x, p) * pow(y, q) * imgIn[x + (x*y) + (x*y*c)];
+              }
+           }
+        }
+     }
+  }
+}
+
 
 int main(int argc, char **argv)
 {

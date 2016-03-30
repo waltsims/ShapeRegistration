@@ -41,27 +41,37 @@ void lm_qrsolv(const int n, double* r, const int ldr, const int* Pivot,
 /******************************************************************************/
 
 /* Set machine-dependent constants to values from float.h. */
-#define LM_MACHEP DBL_EPSILON       /* resolution of arithmetic */
-#define LM_DWARF DBL_MIN            /* smallest nonzero number */
-#define LM_SQRT_DWARF sqrt(DBL_MIN) /* square should not underflow */
-#define LM_SQRT_GIANT sqrt(DBL_MAX) /* square should not overflow */
-#define LM_USERTOL 30 * LM_MACHEP   /* users are recommended to require this */
 
-/* If the above values do not work, the following seem good for an x86:
- LM_MACHEP     .555e-16
- LM_DWARF      9.9e-324
- LM_SQRT_DWARF 1.e-160
- LM_SQRT_GIANT 1.e150
- LM_USER_TOL   1.e-14
-   The following values should work on any machine:
- LM_MACHEP     1.2e-16
- LM_DWARF      1.0e-38
- LM_SQRT_DWARF 3.834e-20
- LM_SQRT_GIANT 1.304e19
- LM_USER_TOL   1.e-14
-*/
+/** resolution of arithmetic 
+  * DBL_EPSION is the minimum positive number such that 1.0 + DBL_EPSILON != 1.0.
+  */
+#define LM_MACHEP DBL_EPSILON       
 
-/* Predefined control parameter sets (msgfile=NULL means stdout). */
+/** smallest nonzero number 
+  * DBL_MIN is the minimum value of a double.
+  */
+#define LM_DWARF DBL_MIN            
+#define LM_SQRT_DWARF sqrt(DBL_MIN) /** square should not underflow */
+#define LM_SQRT_GIANT sqrt(DBL_MAX) /** square should not overflow */
+#define LM_USERTOL 30 * LM_MACHEP   /** users are recommended to require this */
+
+/** If the above values do not work, the following seem good for an x86:
+  * LM_MACHEP     .555e-16
+  * LM_DWARF      9.9e-324
+  * LM_SQRT_DWARF 1.e-160
+  * LM_SQRT_GIANT 1.e150
+  * LM_USER_TOL   1.e-14
+  *  The following values should work on any machine:
+  * LM_MACHEP     1.2e-16
+  * LM_DWARF      1.0e-38
+  * LM_SQRT_DWARF 3.834e-20
+  * LM_SQRT_GIANT 1.304e19
+  * LM_USER_TOL   1.e-14
+  */
+
+/** Predefined control parameter sets (msgfile=NULL means stdout). 
+  * declared in lmstruct.h
+  */
 const lm_control_struct lm_control_double = {
     LM_USERTOL, LM_USERTOL, LM_USERTOL, LM_USERTOL,
     100., 100, 1, NULL, 0, -1, -1};
@@ -132,9 +142,9 @@ void lmmin(const int n, double* x, const int m, const void* data,
 
     int maxfev = C->patience * (n+1);
 
-    int inner_success; /* flag for loop control */
-    double lmpar = 0;  /* Levenberg-Marquardt parameter */
-    double delta = 0;
+    int inner_success; /** flag for loop control */
+    double lmpar = 0;  /** Levenberg-Marquardt parameter */
+    double delta = 0;  /** step size */
     double xnorm = 0;
     double eps = sqrt(MAX(C->epsilon, LM_MACHEP)); /* for forward differences */
 
@@ -432,7 +442,7 @@ void lmmin(const int n, double* x, const int m, const void* data,
             /* Actual scaled reduction. */
             actred = 1 - SQR(fnorm1 / fnorm);
 
-            /* Ratio of actual to predicted reduction. */
+            /* Gain Ratio of actual to predicted reduction. */
             ratio = prered ? actred / prered : 0;
 
             if (C->verbosity == 2) {

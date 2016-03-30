@@ -6,3 +6,6 @@ sr
 CMakeFiles/
 CMakeCache.txt
 
+
+#Gedit files
+*~

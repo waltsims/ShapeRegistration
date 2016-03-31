@@ -103,4 +103,4 @@ void cuda_check(std::string file, int line);
 
 
 
-#endif  // AUX_H
+#endif  // HELPER_H

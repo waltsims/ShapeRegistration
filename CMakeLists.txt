@@ -33,7 +33,7 @@ if(CUDA_FOUND)
 	file(GLOB lm 3rdparty/lmfit-6.1/lib/*.so)
 
 	# Specify the binary name and the source files to build
-	cuda_add_executable(sr src/main.cu src/helper.cu src/helper.h ) 
+	cuda_add_executable(sr src/main.cu src/helper.cu src/helper.h src/shapeRegistration.cu src/shapeRegistration.h ) 
 	target_link_libraries(sr ${lm}  ${CUDA_LIBARIES} ${OpenCV_LIBS})
 
 else()

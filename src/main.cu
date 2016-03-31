@@ -9,81 +9,10 @@
 // ###
 
 #include "helper.h"
+#include "shapeRegistration.h"
 #include <iostream>
 using namespace std;
 
-/** calculate moment of the image
- *  \param[in] imgIn         input image
- *  \param[in] w             size of width of the image
- *  \param[in] h             size of height of the image
- *  \param[in] nc            the number of channels of the image
- *  \param[out] mmt          an array for moments of the image
- *  \param[out] mmtDegree    the degree of moments
- *
- *  \retrun nothing
- *  \note pseudo code of geometric
- *moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
- */
-void imageMoment(float *imgIn, size_t w, size_t h, size_t nc, float *mmt,
-                 size_t mmtDegree) {
-  for (int p = 0; p < mmtDegree; p++) {
-    for (int q = 0; q < mmtDegree; p++) {
-      mmt[p + p * q] = 0;
-
-      for (int c = 0; c < nc; c++) {
-        for (int y = 0; y < h; y++) {
-          for (int x = 0; x < w; x++) {
-            mmt[p + (p * q)] +=
-                pow(x, p) * pow(y, q) * imgIn[x + (w * y) + (w * h * c)];
-          }
-        }
-      }
-    }
-  }
-}
-
-
-/** thin plate spline
- *  \param[in]  affineParam        affine parameters
- *  \param[in]  vectorX            vector X
- *  \param[in]  localCoeff         local coefficients
- *  \param[in] numP          index k
- *  \param[in] colInd        index i
- *
- *  \retrun nothing
- *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
- */
-void tps(float *sigma, float *affineParam, float *vectorX, float *localCoeff, float *interP, int numP, int colInd){
-
-  for (int i = 0 ; i < colInd; i++) {
-    sigma[i] = 0;
-    sigma[i] = (a[i]*vectorX[1]) + (a[i + 1]*vectorX[2]) + (a[i + 2]*vectorX[3]) + radialApprox(interP, centP, localCoeff);
-  }
-}
-
-/** radial basis approximation
- *  \param[in] interP        c_k
- *  \param[in] centP         x
- *  \param[in] localCoeff    w_ki
- *  \param[in] numP          index k
- *  \param[in] colInd        index i
- *  \param[out] sigma        to be added
- *
- *  \retrun give a new location
- *  \note https://en.wikipedia.org/wiki/Radial_basis_function
- */
-float radialApprox(float *interP, float centP, float *localCoeff, int numP, int colInd){
-  float sigma;
-  float euclidianDist;
-
-  euclidianDist = 0;
-  for (int j = 0; j < numP; j++) {
-    euclidianDist = pow((interP[j] - centP), 2) * log(pow((interP[j] - centP), 2));
-    sigma += localcoeff[i + (colInd*j)] * euclidianDist; 
-  }
-  
-  return sigma;
-}
 
 int main(int argc, char **argv) {
   // Before the GPU can process your kernels, a so called "CUDA context" must be

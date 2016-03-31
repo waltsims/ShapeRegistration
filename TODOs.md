@@ -1,14 +1,14 @@
-#This document will discribe the open tasks and allocate responsibility
+# Tasks
 
-## The main tasks of this project are as follow
+These are the main tasks for our project:
 
-- Implement a power function on the GPU to calculate all image moments
-- Implement a image update algorithm after a transformation is executed.
-- ~~Build GPU implementation using [CPU Levenberg-Marguardt algorithm][1]~~
-- ~~Build an image input and output with openCV.~~
-- Build an image input and output with libpng (preferred).
-- Run algorithm in Parallel for 6 normalized instances of image, each after undergoing a 60 degree rotation.
-- ~~(optional) Create a Cmake file for easy compilation.~~
-- (optional) Create a Matlab wrapper for ease of use by other researchers.
+- Implement a power function on the GPU to calculate the image moments.
+- Implement an image update algorithm (post-transformation).
+- Build a GPU implementation using the CPU implementation of the [Levenberg-Marguardt algorithm][1].
+- Implement the image input and output using OpenCV.
+- (optional) Implement an image input and output using libpng (preferred).
+- Run the algorithm in parallel for 6 normalized instances of an image, each one after undergoing a 60 degree rotation.
+- (optional) Create a Cmake file for easy compilation.
+- (optional) Create a Matlab or Python wrapper.
 
 [1]: http://apps.jcns.fz-juelich.de/doku/sc/lmfit

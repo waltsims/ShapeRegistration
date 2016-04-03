@@ -153,10 +153,11 @@ void centerOfMass (float *imgIn, size_t w, size_t h, float *xCentCoord, float *y
 
   for (size_t y = 0; y < h; y++) {
     for (size_t x = 0; x < w; x++) {
-      if (imgIn[x + (w * y)] == FOREGROUND)
+      if (imgIn[x + (w * y)] == FOREGROUND) {
           xCentCoord[0] = xCentCoord[0] + x;
           yCentCoord[0] = yCentCoord[0] + y;
           numOfForegroundPixel++;
+      }
     }
   }
 

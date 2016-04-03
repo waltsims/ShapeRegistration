@@ -13,7 +13,6 @@
 #include <iostream>
 using namespace std;
 
-
 int main(int argc, char **argv) {
   // Before the GPU can process your kernels, a so called "CUDA context" must be
   // initialized
@@ -128,6 +127,21 @@ int main(int argc, char **argv) {
   showImage("Output", mOut, 100 + w + 40, 100);
 
   // ### Display your own output images here as needed
+
+
+  float *resizedImg;
+  int resizedW;
+  int resizedH;
+  // cutMargins (float* imgIn, size_t w, size_t h, size_t nc, float* resizedImg)
+  resizedImg = cutMargins (imgIn, w, h, nc, resizedW, resizedH);
+ 
+  //cv::Mat mResizedImg(resizedH, resizedW, nc);
+
+
+  //convert_layered_to_mat(mResizedImg, resizedImg);
+  //showImage("Resized Output", mResizedImg, 100 + w + 40 + w + 40, 100);
+
+
 
   // wait for key inputs
   cv::waitKey(0);

@@ -1,4 +1,4 @@
-/** 
+/**
  *  \brief     Shape Registration code
  *  \details   Functions for Nonlinear Shape Registration without Correspondences
  *  \author    Gerasimos Chourdakis
@@ -33,12 +33,12 @@ using namespace cv;
  * (x-0.5, y-0.5)   (x+0.5, y-0.5)
  *  (x[0], y[0])     (x[1], y[1])
  *             0-----0
- *             |  0  | 
+ *             |  0  |
  *             |(x,y)|
  *             0-----0
  *  (x[3], y[3])     (x[2], y[2])
  * (x-0.5, y+0.5)   (x+0.5, y+0.5)
- * 
+ *
  */
 struct quadCoords;
 
@@ -46,41 +46,38 @@ struct quadCoords;
  *  \param[in] qCoords     array of quadCoords struct
  *  \param[in] w           size of width of the image
  *  \param[in] h           size of height of the image
- *  \param[in] nc          the number of channels of the image
  *  \param[in] xCoord      a x-coordinate of a pixel
  *  \param[in] yCoord      a y-coordinate of a pixel
  *  \param[out] qCoords    quad coordinates of each pixel
  *
  *  \retrun nothing
  */
-void setQuadCoords (quadCoords* qCoords, size_t w, size_t h, size_t nc, int xCoord, int yCoord);
+void setQuadCoords (quadCoords* qCoords, size_t w, size_t h, int xCoord, int yCoord);
 
 
 /** cut margins of the image
  *  \param[in] imgIn              array of quadCoords struct
  *  \param[in] w                  size of width of the image
  *  \param[in] h                  size of height of the image
- *  \param[in] nc                 the number of channels of the image
  *  \param[in, out] resizedImg    resized image which doesn't have margins
  *  \param[in, out] resizedW      size of width of the resized image
  *  \param[in, out] resizedH      size of height of the resized image
  *
  *  \retrun nothing
  */
-float* cutMargins (float* imgIn, size_t w, size_t h, size_t nc, int& resizedW, int& resizedH);
+float* cutMargins (float* imgIn, size_t w, size_t h, int& resizedW, int& resizedH);
 
 
 /** set the center of mass of the image
  *  \param[in] imgIn          input image
  *  \param[in] w              size of width of the image
  *  \param[in] h              size of height of the image
- *  \param[in] nc             the number of channels of the image
- *  \param[in, out] xCentCoord    x-coordinte of the center of mass in the each channel 
- *  \param[in, out] yCentCoord    y-coordinte of the center of mass in the each channel 
+ *  \param[in, out] xCentCoord    x-coordinte of the center of mass in the each channel
+ *  \param[in, out] yCentCoord    y-coordinte of the center of mass in the each channel
  *
  *  \retrun nothing
  */
-void centerOfMass (float *imgIn, size_t w, size_t h, size_t nc, float *xCentCoord, float *yCentCoord);
+void centerOfMass (float *imgIn, size_t w, size_t h, float *xCentCoord, float *yCentCoord);
 
 void imgNormalization ();
 
@@ -89,7 +86,6 @@ void imgNormalization ();
  *  \param[in] imgIn         input image
  *  \param[in] w             size of width of the image
  *  \param[in] h             size of height of the image
- *  \param[in] nc            the number of channels of the image
  *  \param[in, out] mmt          an array for moments of the image
  *  \param[in, out] mmtDegree    the degree of moments
  *
@@ -97,8 +93,7 @@ void imgNormalization ();
  *  \note pseudo code of geometric
  *moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
  */
-void imageMoment(float *imgIn, size_t w, size_t h, size_t nc, float *mmt,
-                 size_t mmtDegree);
+void imageMoment(float *imgIn, size_t w, size_t h, float *mmt, size_t mmtDegree);
 
 
 /** find vertices of polygon
@@ -112,7 +107,7 @@ void imageMoment(float *imgIn, size_t w, size_t h, size_t nc, float *mmt,
 //}
 
 /** check whether a point is inside polygon or not
- *  \param[in] nvert       Number of vertices in the polygon. Whether to repeat the first vertex at the end is discussed below. 
+ *  \param[in] nvert       Number of vertices in the polygon. Whether to repeat the first vertex at the end is discussed below.
  *  \param[in] vertx       Arrays containing the x-coordinates of the polygon's vertices.
  *  \param[in] verty       Arrays containing the y-coordinates of the polygon's vertices.
  *  \param[in] testx       X-coordinate of the test point.
@@ -133,7 +128,7 @@ int pointInPolygon(int nVert, float *vertX, float *vertY, float testX, float tes
  *  \retrun nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void tps(float *sigma, float *affineParam, float *vectorX, float *ctrlP, float localP, float *localCoeff, int numP, int colInd, size_t w, size_t h, size_t nc);
+void tps(float *sigma, float *affineParam, float *vectorX, float *ctrlP, float localP, float *localCoeff, int numP, int colInd, size_t w, size_t h);
 
 /** radial basis approximation
  *  \param[in] ctrlP         c_k

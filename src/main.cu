@@ -35,27 +35,14 @@ int main(int argc, char **argv) {
   bool ret = getParam("i", image, argc, argv);
   if (!ret) cerr << "ERROR: no image specified" << endl;
   if (argc <= 1) {
-    cout << "Usage: " << argv[0] << " -i <image> [-repeats <repeats>] [-gray]"
+    cout << "Usage: " << argv[0] << " -i <image>"
          << endl;
     return 1;
   }
 
-  // number of computation repetitions to get a better run time measurement
-  int repeats = 1;
-  getParam("repeats", repeats, argc, argv);
-  cout << "repeats: " << repeats << endl;
-
-  // load the input image as grayscale if "-gray" is specifed
-  bool gray = false;
-  getParam("gray", gray, argc, argv);
-  cout << "gray: " << gray << endl;
-
-  // ### Define your own parameters here as needed
-
-  // Load the input image using opencv (load as grayscale if "gray==true",
-  // otherwise as is (may be color or grayscale))
-  cv::Mat mIn =
-      cv::imread(image.c_str(), (gray ? CV_LOAD_IMAGE_GRAYSCALE : -1));
+  // Load the input image using opencv (load as "grayscale", since we are working
+  // only with binary shapes of single channel)
+  cv::Mat mIn = cv::imread(image.c_str(), CV_LOAD_IMAGE_GRAYSCALE );
   // check
   if (mIn.data == NULL) {
     cerr << "ERROR: Could not load image " << image << endl;
@@ -70,41 +57,29 @@ int main(int argc, char **argv) {
   // get image dimensions
   int w = mIn.cols;         // width
   int h = mIn.rows;         // height
-  int nc = mIn.channels();  // number of channels
   cout << "image: " << w << " x " << h << endl;
 
   // Set the output image format
-  // ###
-  // ###
-  // ### TODO: Change the output image format as needed
-  // ###
-  // ###
-  cv::Mat mOut(h, w, mIn.type());  // mOut will have the same number of channels
-                                   // as the input image, nc layers
-  // cv::Mat mOut(h,w,CV_32FC3);    // mOut will be a color image, 3 layers
-  // cv::Mat mOut(h,w,CV_32FC1);    // mOut will be a grayscale image, 1 layer
+  cv::Mat mOut(h,w,CV_32FC1);    // mOut will be a grayscale image, 1 layer
   // ### Define your own output images here as needed
 
   // Allocate arrays
   // input/output image width: w
   // input/output image height: h
-  // input image number of channels: nc
-  // output image number of channels: mOut.channels(), as defined above (nc, 3,
-  // or 1)
 
   // allocate raw input image array
-  float *imgIn = new float[(size_t)w * h * nc];
+  float *imgIn = new float[(size_t)w * h];
 
   // allocate raw output array (the computation result will be stored in this
   // array, then later converted to mOut for displaying)
-  float *imgOut = new float[(size_t)w * h * mOut.channels()];
+  float *imgOut = new float[(size_t)w * h];
 
   // Init raw input image array
   // opencv images are interleaved: rgb rgb rgb...  (actually bgr bgr bgr...)
   // But for CUDA it's better to work with layered images: rrr... ggg... bbb...
   // So we will convert as necessary, using interleaved "cv::Mat" for
   // loading/saving/displaying, and layered "float*" for CUDA computations
-  convert_mat_to_layered(imgIn, mIn);
+  convert_mat_to_layered(imgIn, mIn); // Replace this to remove the conversions, we don't use channels.
 
   Timer timer;
   timer.start();
@@ -123,23 +98,23 @@ int main(int argc, char **argv) {
 
   // show output image: first convert to interleaved opencv format from the
   // layered raw array
-  convert_layered_to_mat(mOut, imgOut);
+  convert_layered_to_mat(mOut, imgOut); // Replace this to remove the conversions, we don't use channels.
   showImage("Output", mOut, 100 + w + 40, 100);
 
   // ### Display your own output images here as needed
 
 
-  float *resizedImg;
-  int resizedW;
-  int resizedH;
-  // cutMargins (float* imgIn, size_t w, size_t h, size_t nc, float* resizedImg)
-  resizedImg = cutMargins (imgIn, w, h, nc, resizedW, resizedH);
- 
-  //cv::Mat mResizedImg(resizedH, resizedW, nc);
-
-
-  //convert_layered_to_mat(mResizedImg, resizedImg);
-  //showImage("Resized Output", mResizedImg, 100 + w + 40 + w + 40, 100);
+  // float *resizedImg;
+  // int resizedW;
+  // int resizedH;
+  //
+  // resizedImg = cutMargins (imgIn, w, h, resizedW, resizedH);
+  //
+  // cv::Mat mResizedImg(resizedH, resizedW, CV_32FC1);
+  //
+  //
+  // convert_layered_to_mat(mResizedImg, resizedImg);
+  // showImage("Resized Output", mResizedImg, 100 + w + 40 + w + 40, 100);
 
 
 

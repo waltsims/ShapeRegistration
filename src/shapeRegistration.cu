@@ -132,7 +132,7 @@ float* cutMargins (float* imgIn, size_t w, size_t h, int& resizedW, int& resized
   for (int y = 0; y < resizedH ; y++) {
     for (int x = 0; x < resizedW ; x++) {
       // printf("%zu | ", x + (resizedW * y));//printf("%.1f ", imgIn[x + (w * y)]);
-      resizedImg[x + (size_t)(resizedW * y)] = 0;
+      resizedImg[x + (size_t)(resizedW * y)] = imgIn[(x+left) + (w * (y+top))];
       //resizedImg[(resizedH-1)*(resizedW-1)] = 0;
       //resizedImg[x + (w * y)] = imgIn[x + (w * y)];
       // resizedImg[x + (w * y)] = imgIn[(x+left) + (w * (y+top))];

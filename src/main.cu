@@ -104,17 +104,13 @@ int main(int argc, char **argv) {
   // ### Display your own output images here as needed
 
 
-  // float *resizedImg;
-  // int resizedW;
-  // int resizedH;
-  //
-  // resizedImg = cutMargins (imgIn, w, h, resizedW, resizedH);
-  //
-  // cv::Mat mResizedImg(resizedH, resizedW, CV_32FC1);
-  //
-  //
-  // convert_layered_to_mat(mResizedImg, resizedImg);
-  // showImage("Resized Output", mResizedImg, 100 + w + 40 + w + 40, 100);
+  float *resizedImg;
+  int resizedW;
+  int resizedH;
+  resizedImg = cutMargins (imgIn, w, h, resizedW, resizedH);
+  cv::Mat mResizedImg(resizedH, resizedW, CV_32FC1);
+  convert_layered_to_mat(mResizedImg, resizedImg);
+  showImage("Resized Output", mResizedImg, 100 + w + 40 + w + 40, 100);
 
 
 

@@ -22,7 +22,6 @@ void setQuadCoords (QuadCoords* qCoords, size_t w, size_t h) {
       qCoords->x[1] = (float)x + 0.5; qCoords->y[1] = (float)y - 0.5;
       qCoords->x[2] = (float)x + 0.5; qCoords->y[2] = (float)y + 0.5;
       qCoords->x[3] = (float)x - 0.5; qCoords->y[3] = (float)y + 0.5;
-      printf("(x-0.5,y-0.5): (%.1f, %.1f), (x+0.5,y-0.5): (%.1f, %.1f), (x,y): (%zu, %zu), (x-0.5,y+0.5): (%.1f, %.1f), (x+0.5,y+0.5): (%.1f, %.1f)\n", qCoords->x[0], qCoords->y[0], qCoords->x[1], qCoords->y[1], x, y, qCoords->x[2], qCoords->y[2], qCoords->x[3], qCoords->y[3]);
     }
   }
 }

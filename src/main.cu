@@ -117,8 +117,6 @@ int main(int argc, char **argv) {
   convert_layered_to_mat(resizedImgOut, resizedImg);
   showImage("Resized Output", resizedImgOut, 100 + w + 40 + w + 40, 100);
 
-  printf("%d, %d\n", resizedW, resizedH);
-
   QuadCoords* qCoords = new QuadCoords[resizedH * resizedW];
   setQuadCoords (qCoords, resizedW, resizedH);
 

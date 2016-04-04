@@ -40,8 +40,10 @@ using namespace cv;
  * (x-0.5, y+0.5)   (x+0.5, y+0.5)
  *
  */
-struct quadCoords;
-
+struct QuadCoords {
+  float x[4];
+  float y[4];
+}; 
 /** setter for quad coordinates of each pixel
  *  \param[in] qCoords     array of quadCoords struct
  *  \param[in] w           size of width of the image
@@ -52,7 +54,7 @@ struct quadCoords;
  *
  *  \retrun nothing
  */
-void setQuadCoords (quadCoords* qCoords, size_t w, size_t h, int xCoord, int yCoord);
+void setQuadCoords (QuadCoords* qCoords, size_t w, size_t h);
 
 
 /** cut margins of the image
@@ -65,7 +67,7 @@ void setQuadCoords (quadCoords* qCoords, size_t w, size_t h, int xCoord, int yCo
  *
  *  \retrun nothing
  */
-float* cutMargins (float* imgIn, size_t w, size_t h, int& resizedW, int& resizedH);
+void cutMargins (float* imgIn, size_t w, size_t h, float*& resizedImg, int& resizedW, int& resizedH);
 
 
 /** set the center of mass of the image

@@ -15,35 +15,29 @@
 #include "shapeRegistration.h"
 #include <stdio.h>
 
-struct quadCoords {
-  float x[4];
-  float y[4];
-};
-
-void setQuadCoords (quadCoords* qCoords, size_t w, size_t h, int xCoord, int yCoord) {
+void setQuadCoords (QuadCoords* qCoords, size_t w, size_t h) {
   for (size_t y = 0; y < h; y++) {
     for (size_t x = 0; x < w; x++) {
-      qCoords->x[0] = xCoord - 0.5; qCoords->y[0] = yCoord - 0.5;
-      qCoords->x[1] = xCoord + 0.5; qCoords->y[1] = yCoord - 0.5;
-      qCoords->x[2] = xCoord + 0.5; qCoords->y[2] = yCoord + 0.5;
-      qCoords->x[3] = xCoord - 0.5; qCoords->y[3] = yCoord + 0.5;
+      qCoords->x[0] = (float)x - 0.5; qCoords->y[0] = (float)y - 0.5;
+      qCoords->x[1] = (float)x + 0.5; qCoords->y[1] = (float)y - 0.5;
+      qCoords->x[2] = (float)x + 0.5; qCoords->y[2] = (float)y + 0.5;
+      qCoords->x[3] = (float)x - 0.5; qCoords->y[3] = (float)y + 0.5;
+      printf("(x-0.5,y-0.5): (%.1f, %.1f), (x+0.5,y-0.5): (%.1f, %.1f), (x,y): (%zu, %zu), (x-0.5,y+0.5): (%.1f, %.1f), (x+0.5,y+0.5): (%.1f, %.1f)\n", qCoords->x[0], qCoords->y[0], qCoords->x[1], qCoords->y[1], x, y, qCoords->x[2], qCoords->y[2], qCoords->x[3], qCoords->y[3]);
     }
   }
 }
 
-float* cutMargins (float* imgIn, size_t w, size_t h, int& resizedW, int& resizedH) {
+void cutMargins (float* imgIn, size_t w, size_t h, float*& resizedImg, int& resizedW, int& resizedH) {
   int top = -1;
   int bottom = -1;
   int left = -1;
   int right = -1;
-  float* resizedImg;
 
   /** set the y-coordinate on the top of the image */
   for (size_t y = 0; y < h; y++) {
     for (size_t x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
         top = y;
-        printf("top: %d\n", top);
         break;
       }
     }
@@ -57,7 +51,6 @@ float* cutMargins (float* imgIn, size_t w, size_t h, int& resizedW, int& resized
     for (size_t x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
         bottom = y;
-        printf("bottom: %d\n", bottom);
         break;
       }
     }
@@ -66,20 +59,11 @@ float* cutMargins (float* imgIn, size_t w, size_t h, int& resizedW, int& resized
     }
   }
 
-  /** just for testing, print all the valuses in imgIn array */
-  // for (size_t y = 0; y < h; y++) {
-  //   printf("\n==============================================%zu\n", y);
-  //   for (size_t x = 0; x < w; x++) {
-  //     printf("%.1f ", imgIn[x + (w * y)]);
-  //   }
-  // }
-
   /** set the x-coordinate on the left of the image */
   for (size_t x = 0; x < w; x++) {
     for (size_t y = 0; y < h; y++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
         left = x;
-        printf("left: %d\n", left);
         break;
       }
     }
@@ -93,7 +77,6 @@ float* cutMargins (float* imgIn, size_t w, size_t h, int& resizedW, int& resized
     for (size_t y = 0; y < h; y++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
         right = x;
-        printf("right: %d\n", right);
         break;
       }
     }
@@ -104,44 +87,15 @@ float* cutMargins (float* imgIn, size_t w, size_t h, int& resizedW, int& resized
 
   resizedH = bottom - top + 1;
   resizedW = right - left + 1;
-  printf("resizedH: %d\n", resizedH);
-  printf("resizedW: %d\n", resizedW);
 
-  // allocate raw input image array
-
+  /** allocate raw input image array */
   resizedImg = new float[resizedW * resizedH];
-  // TODO: make resized image and return the image
-
-  /** just for testing, print all the valuses in imgIn array */
-  // for (size_t x = 0; x < w; x++) {
-  //   printf("\n==============================================%zu\n", x);
-  //   for (size_t y = 0; y < h; y++) {
-  //     printf("%.1f ", imgIn[x + (w * y)]);
-  //   }
-  // }
-
-  // for (size_t x = 0; x < w; x++) {
-  //   printf("\n==============================================%zu\n", x);
-  //   for (size_t y = 0; y < h; y++) {
-  //     resizedImg[x + (w * y)] = 0;
-  //     printf("%.1f ", resizedImg[x + (w * y)]);
-  //   }
-  // }
-
 
   for (int y = 0; y < resizedH ; y++) {
     for (int x = 0; x < resizedW ; x++) {
-      // printf("%zu | ", x + (resizedW * y));//printf("%.1f ", imgIn[x + (w * y)]);
       resizedImg[x + (size_t)(resizedW * y)] = imgIn[(x+left) + (w * (y+top))];
-      //resizedImg[(resizedH-1)*(resizedW-1)] = 0;
-      //resizedImg[x + (w * y)] = imgIn[x + (w * y)];
-      // resizedImg[x + (w * y)] = imgIn[(x+left) + (w * (y+top))];
     }
   }
-
-  return resizedImg;
-
-
 }
 
 void centerOfMass (float *imgIn, size_t w, size_t h, float *xCentCoord, float *yCentCoord) {

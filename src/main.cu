@@ -11,6 +11,7 @@
 #include "helper.h"
 #include "shapeRegistration.h"
 #include <iostream>
+#include <stdio.h>
 using namespace std;
 
 int main(int argc, char **argv) {
@@ -103,16 +104,27 @@ int main(int argc, char **argv) {
 
   // ### Display your own output images here as needed
 
+  /** function testings are from here */
 
   float *resizedImg;
   int resizedW;
   int resizedH;
-  resizedImg = cutMargins (imgIn, w, h, resizedW, resizedH);
-  cv::Mat mResizedImg(resizedH, resizedW, CV_32FC1);
-  convert_layered_to_mat(mResizedImg, resizedImg);
-  showImage("Resized Output", mResizedImg, 100 + w + 40 + w + 40, 100);
 
 
+  cutMargins (imgIn, w, h, resizedImg, resizedW, resizedH);
+
+  cv::Mat resizedImgOut(resizedH, resizedW, CV_32FC1);
+  convert_layered_to_mat(resizedImgOut, resizedImg);
+  showImage("Resized Output", resizedImgOut, 100 + w + 40 + w + 40, 100);
+
+  printf("%d, %d\n", resizedW, resizedH);
+
+  QuadCoords* qCoords = new QuadCoords[resizedH * resizedW];
+  setQuadCoords (qCoords, resizedW, resizedH);
+
+
+
+  /** function testings are to here */
 
   // wait for key inputs
   cv::waitKey(0);

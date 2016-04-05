@@ -13,8 +13,7 @@
 #include <iostream>
 #include <stdio.h>
 
-#define IMAGE_MOMENT 5
-#define ITERATION 100
+#define DEGREE_IMAGE_MOMENT 5
 using namespace std;
 
 int main(int argc, char **argv) {
@@ -134,22 +133,27 @@ int main(int argc, char **argv) {
 
   //TODO: Image Momentum
   // imageMoment(float *imgIn, size_t w, size_t h, float *mmt, size_t mmtDegree)
-  int mmtDegree = IMAGE_MOMENT;
-  float* mmt = new float[IMAGE_MOMENT * IMAGE_MOMENT];
+  int mmtDegree = DEGREE_IMAGE_MOMENT;
+  float* mmt = new float[DEGREE_IMAGE_MOMENT * DEGREE_IMAGE_MOMENT];
 
-  imageMoment(resizedImg, resizedW, resizedH, mmt, mmtDegree);
+  imageMoment(resizedImg, resizedW, resizedH, mmt, mmtDegree); 
+
+  float* sigma;
+  float* affineParam;              // affine parameter(a_ij) should be given            
+  float* localCoeff;               // the local coefficient(w_ki) should be given
+  float* ctrlP;                    // the control points(c_k) should be given
 
 
-  //TODO: Thin Plate Spline 
+  sigma = new float[2];
+  affineParam = new float[6];                                    // affine parameter(a_ij) should be given            
+  localCoeff = new float[2 * w * h];                             // the local coefficient(w_ki) should be given
+  ctrlP = new float[2 * w * h];                                  // the control points(c_k) should be given
+  
+  // TODO: update variables for TPS
+  // updateTPSVariables(resizedW, resizedH, sigma, affineParam, localCoeff, ctrlP);
 
-  float* sigma = new float[ITERATION];
-  float* affineParam = new float[3];                                // affine parameter(a_ij) should be given            
-  float* ctrlP = new float[resizedH * resizedW];                    // the control points(c_k) should be given
-  float* localCoeff = new float[resizedH * resizedW];               // the local coefficient(w_ki) should be given
-
-  //tps(float* imgIn, size_t w, size_t h, float *sigma, float *affineParam, float *ctrlP, float *localCoeff)
-
-  // tps(imgIn, w, h, sigma, affineParam, ctrlP, localCoeff);
+  //tps(float* imgIn, size_t w, size_t h, float *sigma, float *affineParam, float *localCoeff, float *ctrlP, float* mmt, int mmtDegree) 
+  tps(resizedImg, resizedW, resizedH, sigma, affineParam, localCoeff, ctrlP, mmt, mmtDegree);
 
   /** function testings are to here */
 

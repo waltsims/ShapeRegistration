@@ -12,6 +12,9 @@
 #include "shapeRegistration.h"
 #include <iostream>
 #include <stdio.h>
+
+#define IMAGE_MOMENT 5
+#define ITERATION 100
 using namespace std;
 
 int main(int argc, char **argv) {
@@ -117,10 +120,36 @@ int main(int argc, char **argv) {
   convert_layered_to_mat(resizedImgOut, resizedImg);
   showImage("Resized Output", resizedImgOut, 100 + w + 40 + w + 40, 100);
 
+  float xCentCoord;  /** x-coordinte of the center of mass in the each channel */
+  float yCentCoord;  /** y-coordinte of the center of mass in the each channel */
+
+  centerOfMass (resizedImg, resizedW, resizedH, xCentCoord, yCentCoord);
+
+  printf("center of mass ( %.1f, %.1f)", xCentCoord, yCentCoord);
+   
   QuadCoords* qCoords = new QuadCoords[resizedH * resizedW];
   setQuadCoords (qCoords, resizedW, resizedH);
 
+  imgNormalization (resizedImg, resizedW, resizedH, qCoords, xCentCoord, yCentCoord);
 
+  //TODO: Image Momentum
+  // imageMoment(float *imgIn, size_t w, size_t h, float *mmt, size_t mmtDegree)
+  int mmtDegree = IMAGE_MOMENT;
+  float* mmt = new float[IMAGE_MOMENT * IMAGE_MOMENT];
+
+  imageMoment(resizedImg, resizedW, resizedH, mmt, mmtDegree);
+
+
+  //TODO: Thin Plate Spline 
+
+  float* sigma = new float[ITERATION];
+  float* affineParam = new float[3];                                // affine parameter(a_ij) should be given            
+  float* ctrlP = new float[resizedH * resizedW];                    // the control points(c_k) should be given
+  float* localCoeff = new float[resizedH * resizedW];               // the local coefficient(w_ki) should be given
+
+  //tps(float* imgIn, size_t w, size_t h, float *sigma, float *affineParam, float *ctrlP, float *localCoeff)
+
+  // tps(imgIn, w, h, sigma, affineParam, ctrlP, localCoeff);
 
   /** function testings are to here */
 

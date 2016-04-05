@@ -97,31 +97,48 @@ void cutMargins (float* imgIn, size_t w, size_t h, float*& resizedImg, int& resi
   }
 }
 
-void centerOfMass (float *imgIn, size_t w, size_t h, float *xCentCoord, float *yCentCoord) {
+void centerOfMass (float *imgIn, size_t w, size_t h, float &xCentCoord, float &yCentCoord) {
   int numOfForegroundPixel;
 
-  xCentCoord[0] = 0;
-  yCentCoord[0] = 0;
+  xCentCoord = 0;
+  yCentCoord = 0;
   numOfForegroundPixel = 0;
 
   for (size_t y = 0; y < h; y++) {
     for (size_t x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
-          xCentCoord[0] = xCentCoord[0] + x;
-          yCentCoord[0] = yCentCoord[0] + y;
+          xCentCoord = xCentCoord + x;
+          yCentCoord = yCentCoord + y;
           numOfForegroundPixel++;
       }
     }
   }
 
-  xCentCoord[0] /= numOfForegroundPixel;
-  yCentCoord[0] /= numOfForegroundPixel;
+  xCentCoord /= numOfForegroundPixel;
+  yCentCoord /= numOfForegroundPixel;
 }
 
-void imgNormalization (float *imgIn, size_t w, size_t h) {
+void imgNormalization (float *imgIn, size_t w, size_t h, QuadCoords* qCoords, float xCentCoord, float yCentCoord) {
+  /** NOTE: check max(xCentCoord, w - xCentCoord) again */
+  float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
+  float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
-  //centerOfMass (float *imgIn, size_t w, size_t h, float *xCentCoord, float *yCentCoord);
+  size_t index;
 
+  for (size_t y = 0; y < h; y++) {
+    for (size_t x = 0; x < w; x++) {
+      index = x + (w * y);
+      qCoords[index].x[0] = (qCoords[index].x[0] - xCentCoord) * normXFactor;
+      qCoords[index].x[1] = (qCoords[index].x[1] - xCentCoord) * normXFactor;
+      qCoords[index].x[2] = (qCoords[index].x[2] - xCentCoord) * normXFactor;
+      qCoords[index].x[3] = (qCoords[index].x[3] - xCentCoord) * normXFactor;
+  
+      qCoords[index].y[0] = (qCoords[index].y[0] - yCentCoord) * normYFactor;
+      qCoords[index].y[1] = (qCoords[index].y[1] - yCentCoord) * normYFactor;
+      qCoords[index].y[2] = (qCoords[index].y[2] - yCentCoord) * normYFactor;
+      qCoords[index].y[3] = (qCoords[index].y[3] - yCentCoord) * normYFactor;
+    }
+  }
 }
 
 void imageMoment(float *imgIn, size_t w, size_t h, float *mmt, size_t mmtDegree) {
@@ -152,27 +169,35 @@ int pointInPolygon(int nVert, float *vertX, float *vertY, float testX, float tes
   return c;
 }
 
-void tps(float *sigma, float *affineParam, float *vectorX, float *ctrlP, float localP, float *localCoeff, int numP, int colInd, size_t w, size_t h) {
-  for (size_t y = 0; y < h; y++) {
-    for (size_t x = 0; x < w; x++){
-        for (int i = 0 ; i < colInd; i++) {
-          sigma[i] = 0;
-          float radialApproximation = radialApprox(ctrlP, localP, localCoeff, numP, i, colInd);
-          sigma[i] = (affineParam[i]*vectorX[1]) + (affineParam[i + 1]*vectorX[2]) + (affineParam[i + 2]*vectorX[3]) + radialApproximation;
-        }
-    }
-  }
+void tps(float* imgIn, size_t w, size_t h, float *sigma, float *affineParam, float *ctrlP, float *localCoeff, size_t iter) {
+  // for (int i = 0 ; i < iter; i++) {
+  //   sigma[i] = 0;
+  //   for (size_t y = 0; y < h; y++) {
+  //     for (size_t x = 0; x < w; x++){
+  //       int localP = imgIn[x + (w * y)];
+  //       int numP = w * h;, float *sigma, float *sigma, float *sigma
+  //       int colInd = x + (w * y);
+
+  //       float radialApproximation = radialApprox(ctrlP, localP, localCoeff, numP, i);
+  //       /**   (a_i1 *x_1)  + (a_i2 *x_2) + a_i3
+  //        *  = (scale*x_1)  + (sheer*x_2) + translation 
+  //        *  = (        rotation        ) + translation
+  //        */
+  //        sigma[i] = (affineParam[i]*x) + (affineParam[i + 1]*y) + affineParam[i + 2] + radialApproximation;
+  //     }
+  //   }
+  // }
 }
 
-float radialApprox(float *ctrlP, float localP, float *localCoeff, int numP, int i, int colInd) {
-  float sigma;
-  float euclidianDist;
+float radialApprox(size_t w, size_t h, float *sigma, float *ctrlP, float localP, float *localCoeff, int numP, int iter) {
+  // float sigma;
+  // float euclidianDist;
 
-  euclidianDist = 0;
-  for (int j = 0; j < numP; j++) {
-    euclidianDist = pow((ctrlP[j] - localP), 2) * log(pow((ctrlP[j] - localP), 2));
-    sigma += localCoeff[i + (colInd*j)] * euclidianDist;
-  }
+  // euclidianDist = 0;
+  // for (int j = 0; j < numP; j++) {
+  //   euclidianDist = pow((ctrlP[j] - localP), 2) * log(pow((ctrlP[j] - localP), 2));
+  //   sigma += localCoeff[i + (colInd*j)] * euclidianDist;
+  // }
 
-  return sigma;
+  // return sigma;
 }

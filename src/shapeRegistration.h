@@ -71,18 +71,29 @@ void cutMargins (float* imgIn, size_t w, size_t h, float*& resizedImg, int& resi
 
 
 /** set the center of mass of the image
- *  \param[in] imgIn          input image
- *  \param[in] w              size of width of the image
- *  \param[in] h              size of height of the image
+ *  \param[in] imgIn              input image
+ *  \param[in] w                  size of width of the image
+ *  \param[in] h                  size of height of the image
  *  \param[in, out] xCentCoord    x-coordinte of the center of mass in the each channel
  *  \param[in, out] yCentCoord    y-coordinte of the center of mass in the each channel
  *
  *  \retrun nothing
  */
-void centerOfMass (float *imgIn, size_t w, size_t h, float *xCentCoord, float *yCentCoord);
+void centerOfMass (float *imgIn, size_t w, size_t h, float &xCentCoord, float &yCentCoord);
 
-void imgNormalization ();
 
+
+/** normalize the image coordinates
+ *  \param[in] imgIn              input image
+ *  \param[in] w                  size of width of the image
+ *  \param[in] h                  size of height of the image
+ *  \param[in, out] qCoords       quad coordinates of each pixel
+ *  \param[in] xCentCoord         x-coordinte of the center of mass in the each channel
+ *  \param[in] yCentCoord         y-coordinte of the center of mass in the each channel
+ *
+ *  \retrun nothing
+ */
+void imgNormalization (float *imgIn, size_t w, size_t h, QuadCoords* qCoords, float xCentCoord, float yCentCoord);
 
 /** calculate moment of the image
  *  \param[in] imgIn         input image
@@ -121,16 +132,18 @@ void imageMoment(float *imgIn, size_t w, size_t h, float *mmt, size_t mmtDegree)
 int pointInPolygon(int nVert, float *vertX, float *vertY, float testX, float testY);
 
 /** thin plate spline
+ *  \param[in] imgIn           input image
+ *  \param[in] w               size of width of the image
+ *  \param[in] h               size of height of the image
+ *  \param[in, out] sigma      to be added
  *  \param[in] affineParam     affine parameters
- *  \param[in] vectorX         vector X
+ *  \param[in] ctrlP           c_k
  *  \param[in] localCoeff      local coefficients
- *  \param[in] numP            index k
- *  \param[in] colInd          index i
  *
  *  \retrun nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void tps(float *sigma, float *affineParam, float *vectorX, float *ctrlP, float localP, float *localCoeff, int numP, int colInd, size_t w, size_t h);
+void tps(float* imgIn, size_t w, size_t h, float *sigma, float *affineParam, float *ctrlP, float *localCoeff);
 
 /** radial basis approximation
  *  \param[in] ctrlP         c_k

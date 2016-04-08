@@ -16,37 +16,49 @@
 #include "shapeRegistration.h"
 #include <stdio.h>
 
-void setQuadCoords(QuadCoords *qCoords, size_t w, size_t h) {
+void setPixelCoords (PixelCoords *pCoords, size_t w, size_t h) {
   for (size_t y = 0; y < h; y++) {
     for (size_t x = 0; x < w; x++) {
-      qCoords->x[0] = (float)x - 0.5;
-      qCoords->y[0] = (float)y - 0.5;
-      qCoords->x[1] = (float)x + 0.5;
-      qCoords->y[1] = (float)y - 0.5;
-      qCoords->x[2] = (float)x + 0.5;
-      qCoords->y[2] = (float)y + 0.5;
-      qCoords->x[3] = (float)x - 0.5;
-      qCoords->y[3] = (float)y + 0.5;
+		int index = x + y * w;
+      pCoords[index].x = (float)x;
+      pCoords[index].y = (float)y;
     }
   }
 }
 
+void setQuadCoords(QuadCoords *qCoords, size_t w, size_t h) {
+  for (size_t y = 0; y < h; y++) {
+    for (size_t x = 0; x < w; x++) {
+		int index = x + y * w ;
+      qCoords[index].x[0] = (float)x - 0.5;
+      qCoords[index].y[0] = (float)y - 0.5;
+      qCoords[index].x[1] = (float)x + 0.5;
+      qCoords[index].y[1] = (float)y - 0.5;
+      qCoords[index].x[2] = (float)x + 0.5;
+      qCoords[index].y[2] = (float)y + 0.5;
+      qCoords[index].x[3] = (float)x - 0.5;
+      qCoords[index].y[3] = (float)y + 0.5;
+    }
+  }
+}
+
+//TODO maybe should be called crop
 void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
-                int &resizedW, int &resizedH) {
-  int top = -1;
-  int bottom = -1;
-  int left = -1;
-  int right = -1;
+                int &resizedW, int &resizedH, Margins &margins) {
+   margins.top = -1;
+   margins.bottom = -1;
+   margins.left = -1;
+   margins.right = -1;
 
   /** set the y-coordinate on the top of the image */
   for (size_t y = 0; y < h; y++) {
     for (size_t x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
-        top = y;
+        margins.top = y;
         break;
       }
     }
-    if (top != -1) {
+    if (margins.top != -1) {
       break;
     }
   }
@@ -55,11 +67,11 @@ void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
   for (size_t y = h; y > 0; y--) {
     for (size_t x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
-        bottom = y;
+        margins.bottom = y;
         break;
       }
     }
-    if (bottom != -1) {
+    if (margins.bottom != -1) {
       break;
     }
   }
@@ -68,11 +80,11 @@ void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
   for (size_t x = 0; x < w; x++) {
     for (size_t y = 0; y < h; y++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
-        left = x;
+        margins.left = x;
         break;
       }
     }
-    if (left != -1) {
+    if (margins.left != -1) {
       break;
     }
   }
@@ -81,17 +93,17 @@ void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
   for (size_t x = w; x > 0; x--) {
     for (size_t y = 0; y < h; y++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
-        right = x;
+        margins.right = x;
         break;
       }
     }
-    if (right != -1) {
+    if (margins.right != -1) {
       break;
     }
   }
 
-  resizedH = bottom - top + 1;
-  resizedW = right - left + 1;
+  resizedH = margins.bottom - margins.top + 1;
+  resizedW = margins.right - margins.left + 1;
 
   /** allocate raw input image array */
   resizedImg = new float[resizedW * resizedH];
@@ -99,7 +111,23 @@ void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
   for (int y = 0; y < resizedH; y++) {
     for (int x = 0; x < resizedW; x++) {
       resizedImg[x + (size_t)(resizedW * y)] =
-          imgIn[(x + left) + (w * (y + top))];
+          imgIn[(x + margins.left) + (w * (y + margins.top))];
+    }
+  }
+}
+
+void addMargins(float *resizedImg, int resizedW, int resizedH, float *imgOut,
+                size_t w, size_t h, Margins &margins) {
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      // TODO if value outside boundaries then BACKGROUND else set as resisze
+      // image
+		size_t index = x + y * w;
+		size_t rel_index = (x - margins.left) + (y - margins.top) * resizedW;
+      if (x >= margins.left && x <= margins.right && y >= margins.top &&
+          y <= margins.bottom) {
+		 imgOut[index] = resizedImg[rel_index];
+           }
     }
   }
 }
@@ -126,7 +154,8 @@ void centerOfMass(float *imgIn, size_t w, size_t h, float &xCentCoord,
   yCentCoord /= numOfForegroundPixel;
 }
 
-void imgNormalization(float *imgIn, size_t w, size_t h, QuadCoords *qCoords,
+//TODO maybe should be called normalize
+void imgNormalization(size_t w, size_t h, PixelCoords *pCoords,
                       float xCentCoord, float yCentCoord) {
   /** NOTE: check max(xCentCoord, w - xCentCoord) again */
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
@@ -137,15 +166,26 @@ void imgNormalization(float *imgIn, size_t w, size_t h, QuadCoords *qCoords,
   for (size_t y = 0; y < h; y++) {
     for (size_t x = 0; x < w; x++) {
       index = x + (w * y);
-      qCoords[index].x[0] = (qCoords[index].x[0] - xCentCoord) * normXFactor;
-      qCoords[index].x[1] = (qCoords[index].x[1] - xCentCoord) * normXFactor;
-      qCoords[index].x[2] = (qCoords[index].x[2] - xCentCoord) * normXFactor;
-      qCoords[index].x[3] = (qCoords[index].x[3] - xCentCoord) * normXFactor;
+	  pCoords[index].x = (pCoords[index].x - xCentCoord) * normXFactor;
+	  pCoords[index].y = (pCoords[index].y + yCentCoord) * normYFactor;
+    }
+  }
+}
 
-      qCoords[index].y[0] = (qCoords[index].y[0] - yCentCoord) * normYFactor;
-      qCoords[index].y[1] = (qCoords[index].y[1] - yCentCoord) * normYFactor;
-      qCoords[index].y[2] = (qCoords[index].y[2] - yCentCoord) * normYFactor;
-      qCoords[index].y[3] = (qCoords[index].y[3] - yCentCoord) * normYFactor;
+//TODO maybe should be called invNormalize
+void imgDenormalization(size_t w, size_t h, PixelCoords *pCoords,
+                      float xCentCoord, float yCentCoord) {
+  /** NOTE: check max(xCentCoord, w - xCentCoord) again */
+  float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
+  float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
+
+  size_t index;
+
+  for (size_t y = 0; y < h; y++) {
+    for (size_t x = 0; x < w; x++) {
+      index = x + (w * y);
+	  pCoords[index].x = (pCoords[index].x / normXFactor ) + xCentCoord;
+	  pCoords[index].y = (pCoords[index].y / normYFactor ) - yCentCoord;
     }
   }
 }

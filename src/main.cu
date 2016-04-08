@@ -12,6 +12,7 @@
 #include "shapeRegistration.h"
 #include <iostream>
 #include <stdio.h>
+#include <cstring>
 
 #define DEGREE_IMAGE_MOMENT 5
 using namespace std;
@@ -99,21 +100,20 @@ int main(int argc, char **argv) {
   showImage("Input", mIn, 100,
             100);  // show at position (x_from_left=100,y_from_above=100)
 
-  // show output image: first convert to interleaved opencv format from the
-  // layered raw array
-  convert_layered_to_mat(mOut, imgOut); // Replace this to remove the conversions, we don't use channels.
-  showImage("Output", mOut, 100 + w + 40, 100);
 
   // ### Display your own output images here as needed
 
   /** function testings are from here */
 
-  float *resizedImg;
+  float* resizedImg;
   int resizedW;
   int resizedH;
+  Margins margins;
 
+  cutMargins(imgIn, w, h, resizedImg, resizedW, resizedH, margins);
 
-  cutMargins (imgIn, w, h, resizedImg, resizedW, resizedH);
+  cout << " Margins are: \n left: " << margins.left
+       << "\n right: " << margins.right << endl;
 
   cv::Mat resizedImgOut(resizedH, resizedW, CV_32FC1);
   convert_layered_to_mat(resizedImgOut, resizedImg);
@@ -124,12 +124,29 @@ int main(int argc, char **argv) {
 
   centerOfMass (resizedImg, resizedW, resizedH, xCentCoord, yCentCoord);
 
-  printf("center of mass ( %.1f, %.1f)", xCentCoord, yCentCoord);
+  printf("center of mass ( %.1f, %.1f)\n", xCentCoord, yCentCoord);
    
   QuadCoords* qCoords = new QuadCoords[resizedH * resizedW];
   setQuadCoords (qCoords, resizedW, resizedH);
+  PixelCoords* pCoords = new PixelCoords[resizedH * resizedW];
+  setPixelCoords (pCoords, resizedW, resizedH);
 
-  imgNormalization (resizedImg, resizedW, resizedH, qCoords, xCentCoord, yCentCoord);
+  cout << "middle before normalization: " << pCoords[0].x << ", " <<  pCoords[0].y << endl;
+
+  imgNormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+
+  cout << "middle after normalization: " << pCoords[0].x <<", " << pCoords[0].y << endl;
+
+  imgDenormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+
+  cout << "middle after de-normalization: " << pCoords[0].x <<", " << pCoords[0].y << endl;
+
+  addMargins(resizedImg, resizedW, resizedH, imgOut, w, h, margins );
+
+  // show output image: first convert to interleaved opencv format from the
+  // layered raw array
+  convert_layered_to_mat(mOut, imgOut); // Replace this to remove the conversions, we don't use channels.
+  showImage("Output", mOut, 100 + w + 40, 100);
 
   //TODO: Image Momentum
   // imageMoment(float *imgIn, size_t w, size_t h, float *mmt, size_t mmtDegree)

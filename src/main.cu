@@ -39,14 +39,14 @@ int main(int argc, char **argv) {
   bool ret = getParam("i", image, argc, argv);
   if (!ret) cerr << "ERROR: no image specified" << endl;
   if (argc <= 1) {
-    cout << "Usage: " << argv[0] << " -i <image>"
-         << endl;
+    cout << "Usage: " << argv[0] << " -i <image>" << endl;
     return 1;
   }
 
-  // Load the input image using opencv (load as "grayscale", since we are working
+  // Load the input image using opencv (load as "grayscale", since we are
+  // working
   // only with binary shapes of single channel)
-  cv::Mat mIn = cv::imread(image.c_str(), CV_LOAD_IMAGE_GRAYSCALE );
+  cv::Mat mIn = cv::imread(image.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
   // check
   if (mIn.data == NULL) {
     cerr << "ERROR: Could not load image " << image << endl;
@@ -59,12 +59,12 @@ int main(int argc, char **argv) {
   // convert range of each channel to [0,1] (opencv default is [0,255])
   mIn /= 255.f;
   // get image dimensions
-  int w = mIn.cols;         // width
-  int h = mIn.rows;         // height
+  int w = mIn.cols;  // width
+  int h = mIn.rows;  // height
   cout << "image: " << w << " x " << h << endl;
 
   // Set the output image format
-  cv::Mat mOut(h,w,CV_32FC1);    // mOut will be a grayscale image, 1 layer
+  cv::Mat mOut(h, w, CV_32FC1);  // mOut will be a grayscale image, 1 layer
   // ### Define your own output images here as needed
 
   // Allocate arrays
@@ -83,7 +83,9 @@ int main(int argc, char **argv) {
   // But for CUDA it's better to work with layered images: rrr... ggg... bbb...
   // So we will convert as necessary, using interleaved "cv::Mat" for
   // loading/saving/displaying, and layered "float*" for CUDA computations
-  convert_mat_to_layered(imgIn, mIn); // Replace this to remove the conversions, we don't use channels.
+  convert_mat_to_layered(
+      imgIn,
+      mIn);  // Replace this to remove the conversions, we don't use channels.
 
   Timer timer;
   timer.start();
@@ -100,77 +102,63 @@ int main(int argc, char **argv) {
   showImage("Input", mIn, 100,
             100);  // show at position (x_from_left=100,y_from_above=100)
 
-
   // ### Display your own output images here as needed
 
   /** function testings are from here */
 
-  float* resizedImg;
+  float *resizedImg;
   int resizedW;
   int resizedH;
   Margins margins;
 
   cutMargins(imgIn, w, h, resizedImg, resizedW, resizedH, margins);
 
-  cout << " Margins are: \n left: " << margins.left
-       << "\n right: " << margins.right << endl;
-
   cv::Mat resizedImgOut(resizedH, resizedW, CV_32FC1);
   convert_layered_to_mat(resizedImgOut, resizedImg);
   showImage("Resized Output", resizedImgOut, 100 + w + 40 + w + 40, 100);
 
-  float xCentCoord;  /** x-coordinte of the center of mass in the each channel */
-  float yCentCoord;  /** y-coordinte of the center of mass in the each channel */
+  TPSParams tpsParams;
 
-  centerOfMass (resizedImg, resizedW, resizedH, xCentCoord, yCentCoord);
+  float xCentCoord;  // x-coordinte of the center of mass in the each channel
+  float yCentCoord;  // y-coordinte of the center of mass in the each channel
+
+  QuadCoords* qCoords = new QuadCoords[resizedW * resizedH];
+  setQuadCoords(qCoords, resizedW, resizedH);
+
+
+  centerOfMass(resizedImg, resizedW, resizedH, xCentCoord, yCentCoord);
 
   printf("center of mass ( %.1f, %.1f)\n", xCentCoord, yCentCoord);
-   
-  QuadCoords* qCoords = new QuadCoords[resizedH * resizedW];
-  setQuadCoords (qCoords, resizedW, resizedH);
-  PixelCoords* pCoords = new PixelCoords[resizedH * resizedW];
-  setPixelCoords (pCoords, resizedW, resizedH);
 
-  cout << "middle before normalization: " << pCoords[0].x << ", " <<  pCoords[0].y << endl;
+  PixelCoords* pCoords = new PixelCoords[resizedW * resizedH];
+  setPixelCoords(pCoords, resizedW, resizedH);
 
-  imgNormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[0], qCoords[0].y[0]);
+  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[2], qCoords[0].y[2]);
 
-  cout << "middle after normalization: " << pCoords[0].x <<", " << pCoords[0].y << endl;
+  pCoordsNormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+  qCoordsNormalization(resizedW, resizedH, qCoords, xCentCoord, yCentCoord);
+  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[0], qCoords[0].y[0]);
+  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[2], qCoords[0].y[2]);
 
-  imgDenormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+  float* sigma = new float[2 * resizedW * resizedH];
+  printf("---------------------------------\n");
+  printf("pCoordsX 0: %f, pCoordsY 0: %f\n", pCoords[0].x, pCoords[0].y);
 
-  cout << "middle after de-normalization: " << pCoords[0].x <<", " << pCoords[0].y << endl;
+  pTPS(resizedW, resizedH, pCoords, tpsParams, DEGREE_IMAGE_MOMENT);
 
-  addMargins(resizedImg, resizedW, resizedH, imgOut, w, h, margins );
-
-  // show output image: first convert to interleaved opencv format from the
-  // layered raw array
-  convert_layered_to_mat(mOut, imgOut); // Replace this to remove the conversions, we don't use channels.
-  showImage("Output", mOut, 100 + w + 40, 100);
-
-  //TODO: Image Momentum
-  // imageMoment(float *imgIn, size_t w, size_t h, float *mmt, size_t mmtDegree)
-  int mmtDegree = DEGREE_IMAGE_MOMENT;
-  float* mmt = new float[DEGREE_IMAGE_MOMENT * DEGREE_IMAGE_MOMENT];
-
-  imageMoment(resizedImg, resizedW, resizedH, mmt, mmtDegree); 
-
-  float* sigma;
-  float* affineParam;              // affine parameter(a_ij) should be given            
-  float* localCoeff;               // the local coefficient(w_ki) should be given
-  float* ctrlP;                    // the control points(c_k) should be given
+  printf("pCoordsX 0: %f, pCoordsY 0: %f\n", pCoords[0].x, pCoords[0].y);
+  printf("---------------------------------\n");
 
 
-  sigma = new float[2];
-  affineParam = new float[6];                                    // affine parameter(a_ij) should be given            
-  localCoeff = new float[2 * w * h];                             // the local coefficient(w_ki) should be given
-  ctrlP = new float[2 * w * h];                                  // the control points(c_k) should be given
-  
-  // TODO: update variables for TPS
-  // updateTPSVariables(resizedW, resizedH, sigma, affineParam, localCoeff, ctrlP);
+  qTPS(resizedW, resizedH, qCoords, tpsParams, DEGREE_IMAGE_MOMENT);
+  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[0], qCoords[0].y[0]);
+  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[2], qCoords[0].y[2]);
 
-  //tps(float* imgIn, size_t w, size_t h, float *sigma, float *affineParam, float *localCoeff, float *ctrlP, float* mmt, int mmtDegree) 
-  tps(resizedImg, resizedW, resizedH, sigma, affineParam, localCoeff, ctrlP, mmt, mmtDegree);
+  /*
+  pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
+                   float testY)*/
+
 
   /** function testings are to here */
 

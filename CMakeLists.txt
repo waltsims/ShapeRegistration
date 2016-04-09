@@ -14,7 +14,7 @@ if(CUDA_FOUND)
 
 	# Set the compilation flags for CUDA
 	set ( CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --std=c++11 --ptxas-options=-v --use_fast_math 
-	--compiler-options -Wall -lopencvhighgui -lopencv_core )
+	--compiler-options -Wall -lopencvhighgui -lopencv_core -lavcodec)
 
 	# Include the lmfit from the 3rdparty directory (used for the Levenberg-Marquardt solver)
 	# It needs to be configured and built from source.

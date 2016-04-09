@@ -16,20 +16,22 @@
 #include "shapeRegistration.h"
 #include <stdio.h>
 
-void setPixelCoords (PixelCoords *pCoords, size_t w, size_t h) {
-  for (size_t y = 0; y < h; y++) {
-    for (size_t x = 0; x < w; x++) {
-		int index = x + y * w;
+void setPixelCoords(PixelCoords *pCoords, int w, int h) {
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      int index = x + y * w;
       pCoords[index].x = (float)x;
       pCoords[index].y = (float)y;
     }
   }
 }
 
-void setQuadCoords(QuadCoords *qCoords, size_t w, size_t h) {
-  for (size_t y = 0; y < h; y++) {
-    for (size_t x = 0; x < w; x++) {
-		int index = x + y * w ;
+void setQuadCoords(QuadCoords *qCoords, int w, int h) {
+  int index;
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      index = x + y * w;
       qCoords[index].x[0] = (float)x - 0.5;
       qCoords[index].y[0] = (float)y - 0.5;
       qCoords[index].x[1] = (float)x + 0.5;
@@ -42,17 +44,17 @@ void setQuadCoords(QuadCoords *qCoords, size_t w, size_t h) {
   }
 }
 
-//TODO maybe should be called crop
-void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
-                int &resizedW, int &resizedH, Margins &margins) {
-   margins.top = -1;
-   margins.bottom = -1;
-   margins.left = -1;
-   margins.right = -1;
+// TODO maybe should be called crop
+void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
+                int &resizedH, Margins &margins) {
+  margins.top = -1;
+  margins.bottom = -1;
+  margins.left = -1;
+  margins.right = -1;
 
   /** set the y-coordinate on the top of the image */
-  for (size_t y = 0; y < h; y++) {
-    for (size_t x = 0; x < w; x++) {
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
         margins.top = y;
         break;
@@ -64,8 +66,8 @@ void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
   }
 
   /** set the y-coordinate on the bottom of the image */
-  for (size_t y = h; y > 0; y--) {
-    for (size_t x = 0; x < w; x++) {
+  for (int y = h - 1; y >= 0; y--) {
+    for (int x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
         margins.bottom = y;
         break;
@@ -77,8 +79,8 @@ void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
   }
 
   /** set the x-coordinate on the left of the image */
-  for (size_t x = 0; x < w; x++) {
-    for (size_t y = 0; y < h; y++) {
+  for (int x = 0; x < w; x++) {
+    for (int y = 0; y < h; y++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
         margins.left = x;
         break;
@@ -90,8 +92,8 @@ void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
   }
 
   /** set the x-coordinate on the right of the image */
-  for (size_t x = w; x > 0; x--) {
-    for (size_t y = 0; y < h; y++) {
+  for (int x = w - 1; x >= 0; x--) {
+    for (int y = 0; y < h; y++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
         margins.right = x;
         break;
@@ -110,29 +112,29 @@ void cutMargins(float *imgIn, size_t w, size_t h, float *&resizedImg,
 
   for (int y = 0; y < resizedH; y++) {
     for (int x = 0; x < resizedW; x++) {
-      resizedImg[x + (size_t)(resizedW * y)] =
+      resizedImg[x + (int)(resizedW * y)] =
           imgIn[(x + margins.left) + (w * (y + margins.top))];
     }
   }
 }
 
 void addMargins(float *resizedImg, int resizedW, int resizedH, float *imgOut,
-                size_t w, size_t h, Margins &margins) {
+                int w, int h, Margins &margins) {
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       // TODO if value outside boundaries then BACKGROUND else set as resisze
       // image
-		size_t index = x + y * w;
-		size_t rel_index = (x - margins.left) + (y - margins.top) * resizedW;
+      int index = x + y * w;
+      int rel_index = (x - margins.left) + (y - margins.top) * resizedW;
       if (x >= margins.left && x <= margins.right && y >= margins.top &&
           y <= margins.bottom) {
-		 imgOut[index] = resizedImg[rel_index];
-           }
+        imgOut[index] = resizedImg[rel_index];
+      }
     }
   }
 }
 
-void centerOfMass(float *imgIn, size_t w, size_t h, float &xCentCoord,
+void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
                   float &yCentCoord) {
   int numOfForegroundPixel;
 
@@ -140,8 +142,8 @@ void centerOfMass(float *imgIn, size_t w, size_t h, float &xCentCoord,
   yCentCoord = 0;
   numOfForegroundPixel = 0;
 
-  for (size_t y = 0; y < h; y++) {
-    for (size_t x = 0; x < w; x++) {
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
         xCentCoord = xCentCoord + x;
         yCentCoord = yCentCoord + y;
@@ -154,54 +156,77 @@ void centerOfMass(float *imgIn, size_t w, size_t h, float &xCentCoord,
   yCentCoord /= numOfForegroundPixel;
 }
 
-//TODO maybe should be called normalize
-void imgNormalization(size_t w, size_t h, PixelCoords *pCoords,
-                      float xCentCoord, float yCentCoord) {
+// TODO maybe should be called normalize
+void pCoordsNormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
+                          float yCentCoord) {
   /** NOTE: check max(xCentCoord, w - xCentCoord) again */
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
   float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
-  size_t index;
+  int index;
 
-  for (size_t y = 0; y < h; y++) {
-    for (size_t x = 0; x < w; x++) {
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
       index = x + (w * y);
-	  pCoords[index].x = (pCoords[index].x - xCentCoord) * normXFactor;
-	  pCoords[index].y = (pCoords[index].y + yCentCoord) * normYFactor;
+      pCoords[index].x = (pCoords[index].x - xCentCoord) * normXFactor;
+      pCoords[index].y = (pCoords[index].y + yCentCoord) * normYFactor;
     }
   }
 }
 
-//TODO maybe should be called invNormalize
-void imgDenormalization(size_t w, size_t h, PixelCoords *pCoords,
-                      float xCentCoord, float yCentCoord) {
+// TODO maybe should be called normalize
+void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
+                          float yCentCoord) {
   /** NOTE: check max(xCentCoord, w - xCentCoord) again */
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
   float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
-  size_t index;
+  int index;
 
-  for (size_t y = 0; y < h; y++) {
-    for (size_t x = 0; x < w; x++) {
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
       index = x + (w * y);
-	  pCoords[index].x = (pCoords[index].x / normXFactor ) + xCentCoord;
-	  pCoords[index].y = (pCoords[index].y / normYFactor ) - yCentCoord;
+      qCoords[index].x[0] = (qCoords[index].x[0] - xCentCoord) * normXFactor;
+      qCoords[index].y[0] = (qCoords[index].y[0] - xCentCoord) * normYFactor;
+      qCoords[index].x[1] = (qCoords[index].x[1] - xCentCoord) * normXFactor;
+      qCoords[index].y[1] = (qCoords[index].y[1] - xCentCoord) * normYFactor;
+      qCoords[index].x[2] = (qCoords[index].x[2] - xCentCoord) * normXFactor;
+      qCoords[index].y[2] = (qCoords[index].y[2] - xCentCoord) * normYFactor;
+      qCoords[index].x[3] = (qCoords[index].x[3] - xCentCoord) * normXFactor;
+      qCoords[index].y[3] = (qCoords[index].y[3] - xCentCoord) * normYFactor;
     }
   }
 }
 
-void imageMoment(float *imgIn, size_t w, size_t h, float *mmt,
-                 size_t mmtDegree) {
-  for (size_t p = 0; p < mmtDegree; p++) {
-    for (size_t q = 0; q < mmtDegree; q++) {
-      mmt[p + p * q] = 0;
+// TODO maybe should be called invNormalize
+void imgDenormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
+                        float yCentCoord) {
+  /** NOTE: check max(xCentCoord, w - xCentCoord) again */
+  float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
+  float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
-      for (size_t y = 0; y < h; y++) {
-        for (size_t x = 0; x < w; x++) {
+  int index;
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      index = x + (w * y);
+      pCoords[index].x = (pCoords[index].x / normXFactor) + xCentCoord;
+      pCoords[index].y = (pCoords[index].y / normYFactor) - yCentCoord;
+    }
+  }
+}
+
+void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree) {
+  for (int p = 0; p < mmtDegree; p++) {
+    for (int q = 0; q < mmtDegree; q++) {
+      mmt[p + (mmtDegree * q)] = 0;
+
+      for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
           /** note: (q+p)th order in the dissertation but not here,
            *  need to check later
            */
-          mmt[p + (p * q)] +=
+          mmt[p + (mmtDegree * q)] +=
               pow(x, p + 1) * pow(y, q + 1) * imgIn[x + (w * y)];
         }
       }
@@ -209,59 +234,138 @@ void imageMoment(float *imgIn, size_t w, size_t h, float *mmt,
   }
 }
 
-void updateTPSVariables(size_t w, size_t h, float *sigma, float *affineParam,
-                        float *localCoeff, float *ctrlP) {
-  if (sigma != NULL) delete[] sigma;
-  if (affineParam != NULL) delete[] affineParam;
-  if (localCoeff != NULL) delete[] localCoeff;
-  if (ctrlP != NULL) delete[] ctrlP;
+// PixelCoords* pCoordsSigma
+void pTPS(int w, int h, PixelCoords* pCoords, TPSParams &tpsParams, int mmtDegree) {
+  int index;
+  for (int x = 0; x < w; x++) {
+    for (int y = 0; y < h; y++) {
+      index = x + w * y;
 
-  sigma = new float[2];
-  affineParam = new float[6];  // affine parameter(a_ij) should be given
-  localCoeff =
-      new float[2 * w * h];      // the local coefficient(w_ki) should be given
-  ctrlP = new float[2 * w * h];  // the control points(c_k) should be given
+      float* radialApproximation = pTPSradialApprox(tpsParams, pCoords[index], mmtDegree);
 
-  // TODO: update the values
+      /**   (a_i1 *x_1)  + (a_i2 *x_2) + a_i3
+       *  = (scale*x_1)  + (sheer*x_2) + translation
+       *  = (        rotation        ) + translation
+       */
+      pCoords[index].x = (tpsParams.affineParam[0] * pCoords[index].x) +
+          (tpsParams.affineParam[1] * pCoords[index].y) +
+          tpsParams.affineParam[2] + radialApproximation[0];
+
+      pCoords[index].y = (tpsParams.affineParam[3] * pCoords[index].y) +
+          (tpsParams.affineParam[4] * pCoords[index].y) +
+          tpsParams.affineParam[5] + radialApproximation[1];
+    }
+  }
 }
 
-void tps(float *imgIn, size_t w, size_t h, float *sigma, float *affineParam,
-         float *localCoeff, float *ctrlP, float *mmt, int mmtDegree) {
-  for (int i = 0; i < 2; i++) {
-    sigma[i] = 0;
-    for (size_t y = 0; y < h; y++) {
-      for (size_t x = 0; x < w; x++) {
-        size_t pVector = (i == 0) ? x : y;
+float* pTPSradialApprox(TPSParams &tpsParams, PixelCoords pCoords, int mmtDegree) {
 
-        float radialApproximation = radialApprox(w, h, sigma, localCoeff, ctrlP,
-                                                 pVector, mmt, mmtDegree, i);
+  float euclidianDist[2] = {0, 0};
+  float* sum = new float[2];
+  int index;  
+
+  int dimSize = mmtDegree * mmtDegree;
+
+
+  for (int i = 0; i < dimSize; i++) {
+    for (int j = 0; j < 2; j++) {
+      index = i + j * dimSize;
+      // NOTE: change power function to a by a
+      float r = sqrt(pow((tpsParams.ctrlP[index] - pCoords.x), 2) +
+               pow((tpsParams.ctrlP[index] - pCoords.y), 2));
+
+      euclidianDist[j] = pow(r, 2) * log(pow(r, 2));
+      sum[j] += tpsParams.localCoeff[index] * euclidianDist[j];
+
+    }
+  }
+
+  return sum;
+}
+
+void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
+          int mmtDegree) {
+  int index;
+  for (int x = 0; x < w; x++) {
+    for (int y = 0; y < h; y++) {
+      for (int qIndex = 0; qIndex < 4; qIndex++) {
+        index = x + w * y;
+
+        float *radialApproximation =
+            qTPSradialApprox(tpsParams, qCoords[index], mmtDegree, qIndex);
+
         /**   (a_i1 *x_1)  + (a_i2 *x_2) + a_i3
          *  = (scale*x_1)  + (sheer*x_2) + translation
          *  = (        rotation        ) + translation
          */
-        sigma[i] = (affineParam[i * 3] * x) + (affineParam[(i * 3) + 1] * y) +
-                   affineParam[(i * 3) + 2] + radialApproximation;
+
+        // note:: change
+        qCoords[index].x[qIndex] =
+            (tpsParams.affineParam[0] * qCoords[index].x[qIndex]) +
+            (tpsParams.affineParam[1] * qCoords[index].y[qIndex]) +
+            tpsParams.affineParam[2] + radialApproximation[0];
+
+        qCoords[index].y[qIndex] =
+            (tpsParams.affineParam[3] * qCoords[index].y[qIndex]) +
+            (tpsParams.affineParam[4] * qCoords[index].y[qIndex]) +
+            tpsParams.affineParam[5] + radialApproximation[1];
       }
     }
   }
 }
 
-float radialApprox(size_t w, size_t h, float *sigma, float *localCoeff,
-                   float *ctrlP, size_t pVector, float *mmt, int mmtDegree,
-                   int dimIndex) {
-  float euclidianDist = 0;
-  size_t index;
+float *qTPSradialApprox(TPSParams &tpsParams, QuadCoords qCoords, int mmtDegree,
+                        int qIndex) {
+  float euclidianDist[2] = {0, 0};
+  float *sum = new float[2];
+  int index;
 
-  size_t dimSize = mmtDegree * mmtDegree;
-  sigma[dimIndex] = 0;
-  for (size_t i = 0; i < dimSize; i++) {
-    index = i + dimSize * dimIndex;
-    euclidianDist = pow((ctrlP[index] - pVector), 2) *
-                    log(pow((ctrlP[index] - pVector), 2));
-    sigma[dimIndex] += localCoeff[index] * euclidianDist;
+  int dimSize = mmtDegree * mmtDegree;
+
+
+  for (int i = 0; i < dimSize; i++) {
+    for (int j = 0; j < 2; j++) {
+      // NOTE: change power function to a by a
+      float r = sqrt(pow((tpsParams.ctrlP[index] - qCoords.x[qIndex]), 2) +
+                     pow((tpsParams.ctrlP[index] - qCoords.y[qIndex]), 2));
+      
+      euclidianDist[j] = pow(r, 2) * log(pow(r, 2));
+      sum[j] += tpsParams.localCoeff[index] * euclidianDist[j];
+      index = i + j * dimSize;
+    }
   }
+  return sum;
+}
 
-  return sigma[dimIndex];
+void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
+                   float *ctrlP, int mmtDegree) {
+  int index;
+  int dimSize = mmtDegree * mmtDegree;
+  float radialApprox;
+  float squareOfNorm;
+
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      index = i + 2 * j;
+      jacobi[index] = tpsParams.affineParam[index];
+
+      radialApprox = 0;
+      for (int x = 0; x < w; x++) {
+        for (int y = 0; y < h; y++) {
+          squareOfNorm = 0;
+          for (int k = 0; k < dimSize; i++) {
+            int indexNorm = k + dimSize * i;
+            squareOfNorm = pow((tpsParams.ctrlP[indexNorm] - x), 2) +
+                           pow((tpsParams.ctrlP[indexNorm] - y), 2);
+          }
+          radialApprox += 2 *
+                          tpsParams.localCoeff[x + w * h + (i * (x + w * h))] *
+                          (ctrlP[x + w * h + (j * (x + w * h))] - y) *
+                          (1 + log(squareOfNorm));
+        }
+      }
+    }
+  }
 }
 
 int pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
@@ -277,3 +381,4 @@ int pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
   }
   return c;
 }
+

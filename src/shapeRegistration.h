@@ -24,7 +24,7 @@
 #define BACKGROUND 0
 #define FOREGROUND 1
 
-#define DEGREE_IMAGE_MOMENT 5
+#define DIM_C_REF 5
 
 using namespace std;
 using namespace cv;
@@ -43,7 +43,7 @@ struct TPSParams {
   /** local coefficient: w
    *  size: 2 X degree of moment^2
    */
-  float localCoeff[2 * DEGREE_IMAGE_MOMENT * DEGREE_IMAGE_MOMENT] = {
+  float localCoeff[2 * DIM_C_REF * DIM_C_REF] = {
       43.4336100367918,  -254.664478125986, 164.260796260200,
       209.676277829085,  -95.4890564425583, 74.0543824971685,
       -28.7045465000123, 24.3081842513946,  12.0776119309275,
@@ -63,8 +63,10 @@ struct TPSParams {
       -39.5796905616838, 185.196153840653};
   /** conrol points: c
    *  size: 2 X degree of moment^2
+   *
+   *  25 total points odered x then y dimensions
    */
-  float ctrlP[2 * DEGREE_IMAGE_MOMENT * DEGREE_IMAGE_MOMENT] = {
+  float ctrlP[2 * DIM_C_REF * DIM_C_REF] = {
       -0.333333333333333, -0.333333333333333, -0.333333333333333,
       -0.333333333333333, -0.333333333333333, -0.166666666666667,
       -0.166666666666667, -0.166666666666667, -0.166666666666667,
@@ -245,18 +247,14 @@ void pTPS(int w, int h, PixelCoords* pCoords, TPSParams &tpsParams, int mmtDegre
 
 
 /** radial basis approximation
- *  \param[in] w               size of width of the image
- *  \param[in] h               size of height of the image
- *  \param[in] tpsParams       parameters for thisn plate spline method
- *  \param[in] x               x-coordinate
- *  \param[in] y               y-coordinate
- *  \param[in] mmt             an array for moments of the image
- *  \param[in] mmtDegree       the degree of moments
- *  \param[in] dimIndex        index of dimension
+ *  \param[in] x				 x-coordinates of current pixel as structure
+ *  \param[in] y				 y-coordinates of current pixel as structure
+ *  \param[in] cx               cx-coordinate
+ *  \param[in] cy               y-coordinate
  *
- *  \retrun give a new location
+ *  \retrun radial basis function value
  */
-float* pTPSradialApprox(TPSParams &tpsParams, PixelCoords pCoords, int mmtDegree);
+float radialApprox( float x, float y, float cx, float cy);
 
 /** thin plate spline for quad coordinates
  *  \param[in] imgIn           input image
@@ -273,21 +271,6 @@ float* pTPSradialApprox(TPSParams &tpsParams, PixelCoords pCoords, int mmtDegree
 void qTPS(int w, int h, QuadCoords* qCoords, TPSParams &tpsParams, int mmtDegree);
 
 
-/** radial basis approximation
- *  \param[in] w               size of width of the image
- *  \param[in] h               size of height of the image
- *  \param[in] tpsParams       parameters for thisn plate spline method
- *  \param[in] x               x-coordinate
- *  \param[in] y               y-coordinate
- *  \param[in] mmt             an array for moments of the image
- *  \param[in] mmtDegree       the degree of moments
- *  \param[in] dimIndex        index of dimension
- *
- *  \retrun give a new location
- */
-float* qTPSradialApprox(TPSParams &tpsParams, QuadCoords qCoords, int mmtDegree, int qIndex);
-
-
 /** jacobian transformation
  *  \param[in] w               size of width of the image
  *  \param[in] h               size of height of the image
@@ -301,6 +284,11 @@ float* qTPSradialApprox(TPSParams &tpsParams, QuadCoords qCoords, int mmtDegree,
  */
 void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
                    float *ctrlP, int mmtDegree);
+/** Discription to come
+ *
+ * */
+void transpose(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
+               int h, float *imgOut);
 
 /** check whether a point is inside polygon or not
  *  \param[in] nVert       Number of vertices in the polygon. Whether to repeat
@@ -316,7 +304,7 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
  *  \note
  * https://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html#Polyhedron
  */
-int pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
+bool pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
                    float testY);
 
 #endif  // SHAPEREGISTRATION_H

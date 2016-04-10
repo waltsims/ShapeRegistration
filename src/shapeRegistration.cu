@@ -17,18 +17,26 @@
 #include <stdio.h>
 
 void setPixelCoords(PixelCoords *pCoords, int w, int h) {
+  // Index in the image array with sizes w,h.
+  int index;
+
+  // Set the pixel coordinates (from (0,0) to (h-1, w-1))
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      int index = x + y * w;
+      index = x + y * w;
       pCoords[index].x = (float)x;
       pCoords[index].y = (float)y;
+      // printf("x = %d, y = %d, index = %d, pCoords.x = %f, pCoords.y = %f.\n",
+      //       x, y, index, pCoords[index].x, pCoords[index].y);
     }
   }
 }
 
 void setQuadCoords(QuadCoords *qCoords, int w, int h) {
+  // Index in the image array with sizes w,h.
   int index;
 
+  // Set the coordinates of the four quad points of each pixel
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       index = x + y * w;
@@ -44,15 +52,15 @@ void setQuadCoords(QuadCoords *qCoords, int w, int h) {
   }
 }
 
-// TODO maybe should be called crop
 void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
                 int &resizedH, Margins &margins) {
+  /** Initialize the the margin positions */
   margins.top = -1;
   margins.bottom = -1;
   margins.left = -1;
   margins.right = -1;
 
-  /** set the y-coordinate on the top of the image */
+  /** Top: row (y) of the first foreground pixel from top. */
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
@@ -65,7 +73,7 @@ void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
     }
   }
 
-  /** set the y-coordinate on the bottom of the image */
+  /** Bottom: row (y) of the last foreground pixel from top. */
   for (int y = h - 1; y >= 0; y--) {
     for (int x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
@@ -78,7 +86,7 @@ void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
     }
   }
 
-  /** set the x-coordinate on the left of the image */
+  /** Left: column (x) of the first foreground pixel from left. */
   for (int x = 0; x < w; x++) {
     for (int y = 0; y < h; y++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
@@ -91,7 +99,7 @@ void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
     }
   }
 
-  /** set the x-coordinate on the right of the image */
+  /** Right: column (x) of the last foreground pixel from left. */
   for (int x = w - 1; x >= 0; x--) {
     for (int y = 0; y < h; y++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
@@ -104,15 +112,17 @@ void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
     }
   }
 
+  /** Height and width of the cropped image */
   resizedH = margins.bottom - margins.top + 1;
   resizedW = margins.right - margins.left + 1;
 
-  /** allocate raw input image array */
+  /** Allocate the cropped image array */
   resizedImg = new float[resizedW * resizedH];
 
+  /** Assign the respective full image pixels to the cropped image pixels */
   for (int y = 0; y < resizedH; y++) {
     for (int x = 0; x < resizedW; x++) {
-      resizedImg[x + (int)(resizedW * y)] =
+      resizedImg[x + resizedW * y] =
           imgIn[(x + margins.left) + (w * (y + margins.top))];
     }
   }
@@ -120,15 +130,20 @@ void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
 
 void addMargins(float *resizedImg, int resizedW, int resizedH, float *imgOut,
                 int w, int h, Margins &margins) {
+  /** Assign each resizedImg pixel to the respective imgOut pixel.
+   *  x,y: coordinates in the full-size imgOut */
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      // TODO if value outside boundaries then BACKGROUND else set as resisze
-      // image
+      // Index in the imgOut array
       int index = x + y * w;
-      int rel_index = (x - margins.left) + (y - margins.top) * resizedW;
+      // Index in the resizedImg array
+      int res_index = (x - margins.left) + (y - margins.top) * resizedW;
+      // Check if the value is provided in the resizedImg, else set it to background.
       if (x >= margins.left && x <= margins.right && y >= margins.top &&
           y <= margins.bottom) {
-        imgOut[index] = resizedImg[rel_index];
+        imgOut[index] = resizedImg[res_index];
+      } else {
+        imgOut[index] = BACKGROUND;
       }
     }
   }
@@ -136,22 +151,25 @@ void addMargins(float *resizedImg, int resizedW, int resizedH, float *imgOut,
 
 void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
                   float &yCentCoord) {
-  int numOfForegroundPixel;
-
+  /** Initializations
+  * xCentCoord, yCentCoord: x,y indices of the center of mass
+  * numOfForegroundPixel: number of the foreground pixels */
   xCentCoord = 0;
   yCentCoord = 0;
-  numOfForegroundPixel = 0;
+  int numOfForegroundPixel = 0;
 
+  /** Compute the sum of the coordinates and the number of foreground pixels */
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       if (imgIn[x + (w * y)] == FOREGROUND) {
-        xCentCoord = xCentCoord + x;
-        yCentCoord = yCentCoord + y;
+        xCentCoord += x;
+        yCentCoord += y;
         numOfForegroundPixel++;
       }
     }
   }
 
+  /** Average: divide the sum of the coordinates to the number of pixels */
   xCentCoord /= numOfForegroundPixel;
   yCentCoord /= numOfForegroundPixel;
 }
@@ -159,17 +177,26 @@ void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
 // TODO maybe should be called normalize
 void pCoordsNormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
                           float yCentCoord) {
-  /** NOTE: check max(xCentCoord, w - xCentCoord) again */
+  // Scaling factors per x,y (1/sx, 1/sy in the Matlab implementation)
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
   float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
+  // Debug
+  printf("normXFactor = %f, normYFactor = %f, xCentCoord = %f, yCentCoord = %f, width = %d, height = %d\n",
+          normXFactor, normYFactor, xCentCoord, yCentCoord, w, h);
+
+  // Index in the image array
   int index;
 
+  /** Normalize the center coordinates of all the pixels:
+   *  Shift to make the center of mass the center of the image and
+   *  scale to make the image of unit width and height ([-0.5, 0.5])
+   */
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       index = x + (w * y);
       pCoords[index].x = (pCoords[index].x - xCentCoord) * normXFactor;
-      pCoords[index].y = (pCoords[index].y + yCentCoord) * normYFactor;
+      pCoords[index].y = (pCoords[index].y - yCentCoord) * normYFactor;
     }
   }
 }
@@ -177,57 +204,76 @@ void pCoordsNormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
 // TODO maybe should be called normalize
 void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
                           float yCentCoord) {
-  /** NOTE: check max(xCentCoord, w - xCentCoord) again */
+  // Scaling factors per x,y (1/sx, 1/sy in the Matlab implementation)
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
   float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
+  // Debug
+  printf("normXFactor = %f, normYFactor = %f, xCentCoord = %f, yCentCoord = %f, width = %d, height = %d\n",
+          normXFactor, normYFactor, xCentCoord, yCentCoord, w, h);
+
+  // Index in the image array
   int index;
 
+  /** Normalize the quad coordinates of all the pixels:
+   *  Shift to make the center of mass the center of the image and
+   *  scale to make the image of unit width and height ([-0.5, 0.5])
+   */
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       index = x + (w * y);
       qCoords[index].x[0] = (qCoords[index].x[0] - xCentCoord) * normXFactor;
-      qCoords[index].y[0] = (qCoords[index].y[0] - xCentCoord) * normYFactor;
+      qCoords[index].y[0] = (qCoords[index].y[0] - yCentCoord) * normYFactor;
       qCoords[index].x[1] = (qCoords[index].x[1] - xCentCoord) * normXFactor;
-      qCoords[index].y[1] = (qCoords[index].y[1] - xCentCoord) * normYFactor;
+      qCoords[index].y[1] = (qCoords[index].y[1] - yCentCoord) * normYFactor;
       qCoords[index].x[2] = (qCoords[index].x[2] - xCentCoord) * normXFactor;
-      qCoords[index].y[2] = (qCoords[index].y[2] - xCentCoord) * normYFactor;
+      qCoords[index].y[2] = (qCoords[index].y[2] - yCentCoord) * normYFactor;
       qCoords[index].x[3] = (qCoords[index].x[3] - xCentCoord) * normXFactor;
-      qCoords[index].y[3] = (qCoords[index].y[3] - xCentCoord) * normYFactor;
+      qCoords[index].y[3] = (qCoords[index].y[3] - yCentCoord) * normYFactor;
     }
   }
 }
 
 // TODO maybe should be called invNormalize
-void imgDenormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
-                        float yCentCoord) {
-  /** NOTE: check max(xCentCoord, w - xCentCoord) again */
+void pCoordsDenormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
+                            float yCentCoord) {
+  // Scaling factors per x,y (1/sx, 1/sy in the Matlab implementation)
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
   float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
+  // Debug
+  printf("normXFactor = %f, normYFactor = %f, xCentCoord = %f, yCentCoord = %f, width = %d, height = %d\n",
+          normXFactor, normYFactor, xCentCoord, yCentCoord, w, h);
+
+  // Index in the image array
   int index;
 
+  /** De-normalize the center coordinates of all the pixels:
+   *  Shift to restore the center of mass to the original position and
+   *  scale to restore the image to the original size
+   */
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       index = x + (w * y);
-      pCoords[index].x = (pCoords[index].x / normXFactor) + xCentCoord;
-      pCoords[index].y = (pCoords[index].y / normYFactor) - yCentCoord;
+      pCoords[index].x = pCoords[index].x / normXFactor  + xCentCoord;
+      pCoords[index].y = pCoords[index].y / normYFactor  + yCentCoord;
     }
   }
 }
 
 void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree) {
+  // Compute all the combinations of the (p+q)-order image moments
+  // Keep in mind that p,q go from 0 to mmtDegree-1.
   for (int p = 0; p < mmtDegree; p++) {
     for (int q = 0; q < mmtDegree; q++) {
+      // Initialize the current image moment to zero
       mmt[p + (mmtDegree * q)] = 0;
 
+      // Compute the image moments taking the contributions from all the pixels
       for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
-          /** note: (q+p)th order in the dissertation but not here,
-           *  need to check later
-           */
-          mmt[p + (mmtDegree * q)] +=
-              pow(x, p + 1) * pow(y, q + 1) * imgIn[x + (w * y)];
+        mmt[p + (mmtDegree * q)] +=
+            pow(x, p + 1) * pow(y, q + 1) * imgIn[x + (w * y)];
         }
       }
     }
@@ -262,7 +308,7 @@ float* pTPSradialApprox(TPSParams &tpsParams, PixelCoords pCoords, int mmtDegree
 
   float euclidianDist[2] = {0, 0};
   float* sum = new float[2];
-  int index;  
+  int index;
 
   int dimSize = mmtDegree * mmtDegree;
 
@@ -328,7 +374,7 @@ float *qTPSradialApprox(TPSParams &tpsParams, QuadCoords qCoords, int mmtDegree,
       // NOTE: change power function to a by a
       float r = sqrt(pow((tpsParams.ctrlP[index] - qCoords.x[qIndex]), 2) +
                      pow((tpsParams.ctrlP[index] - qCoords.y[qIndex]), 2));
-      
+
       euclidianDist[j] = pow(r, 2) * log(pow(r, 2));
       sum[j] += tpsParams.localCoeff[index] * euclidianDist[j];
       index = i + j * dimSize;
@@ -381,4 +427,3 @@ int pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
   }
   return c;
 }
-

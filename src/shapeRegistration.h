@@ -29,7 +29,7 @@
 using namespace std;
 using namespace cv;
 
-/** structure to save paramters for thin plate spline
+/** structure to save parameters for thin plate spline
  *
  *  \note all the values are given from tps.mat
  *
@@ -38,11 +38,10 @@ struct TPSParams {
   /** affine parameters: a
    *  size: 2 X 3
    */
-  float affineParam[2 * 3] = {180.750570973114, -16.6979777565757,
-                              78.2371003511860, 26.8971153700975,
-                              230.948397768629, 94.8716771317028};
+  float affineParam[2 * 3] = {180.750570973114 , -16.6979777565757, 78.2371003511860,
+                               26.8971153700975, 230.948397768629 , 94.8716771317028};
   /** local coefficient: w
-   *  size: 2 X degree of momente^2
+   *  size: 2 X degree of moment^2
    */
   float localCoeff[2 * DEGREE_IMAGE_MOMENT * DEGREE_IMAGE_MOMENT] = {
       43.4336100367918,  -254.664478125986, 164.260796260200,
@@ -109,7 +108,11 @@ struct PixelCoords {
   float y;
 };
 
-/** structure to save margin sizes
+/** structure to save margin positions
+ * top: row (y) of the first foreground pixel from top.
+ * bottom: row (y) of the last foreground pixel from top.
+ * left: column (x) of the first foreground pixel from left.
+ * right: column (x) of the last foreground pixel from left.
  *
  */
 struct Margins {
@@ -138,25 +141,27 @@ void setPixelCoords(PixelCoords *pCoords, int w, int h);
 void setQuadCoords(QuadCoords *qCoords, int w, int h);
 
 /** cut margins of the image
- *  \param[in] imgIn              array of quadCoords struct
- *  \param[in] w                  size of width of the image
- *  \param[in] h                  size of height of the image
- *  \param[in, out] resizedImg    resized image which doesn't have margins
- *  \param[in, out] resizedW      size of width of the resized image
- *  \param[in, out] resizedH      size of height of the resized image
+ *  \param[in] imgIn              array of the input image pixels
+ *  \param[in] w                  width of the image
+ *  \param[in] h                  height of the image
+ *  \param[out] resizedImg        resized image which doesn't have margins (cropped)
+ *  \param[out] resizedW          width of the resized image
+ *  \param[out] resizedH          height of the resized image
+ *  \param[out] margins           margin positions (first/last foreground indices)
  *
  *  \retrun nothing
  */
 void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
                 int &resizedH, Margins &margins);
 
-/** cut margins of the image
- *  \param[in] imgIn              array of quadCoords struct
- *  \param[in] w                  size of width of the image
- *  \param[in] h                  size of height of the image
- *  \param[in, out] resizedImg    resized image which doesn't have margins
- *  \param[in, out] resizedW      size of width of the resized image
- *  \param[in, out] resizedH      size of height of the resized image
+/** add the original margins to a cropped image
+ *  \param[in] resizedImg         array of the cropped image pixels
+ *  \param[in] resizedW           width of the resized image
+ *  \param[in] resizedH           height of the resized image
+ *  \param[out] imgOut            array of the output, full size image pixels
+ *  \param[in] w                  width of the image
+ *  \param[in] h                  height of the image
+ *  \param[in] margins            margin positions (first/last foreground indices)
  *
  *  \retrun nothing
  */
@@ -165,38 +170,34 @@ void addMargins(float *resizedimg, int resizedW, int resizedH, float *imgOut,
 
 /** set the center of mass of the image
  *  \param[in] imgIn              input image
- *  \param[in] w                  size of width of the image
- *  \param[in] h                  size of height of the image
- *  \param[in, out] xCentCoord    x-coordinte of the center of mass in the each
- * channel
- *  \param[in, out] yCentCoord    y-coordinte of the center of mass in the each
- * channel
+ *  \param[in] w                  width of the image
+ *  \param[in] h                  height of the image
+ *  \param[in, out] xCentCoord    x-coordinate of the center of mass
+ *  \param[in, out] yCentCoord    y-coordinate of the center of mass
  *
  *  \retrun nothing
  */
 void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
                   float &yCentCoord);
 
-/** normalize the image coordinates for pixel coordinates
- *  \param[in] imgIn              input image
+/** normalize the center coordinates for each pixel
  *  \param[in] w                  size of width of the image
  *  \param[in] h                  size of height of the image
  *  \param[in, out] pCoords       center coordinates of each pixel
- *  \param[in] xCentCoord         x-coordinte of the center of mass in image
- *  \param[in] yCentCoord         y-coordinte of the center of mass in image
+ *  \param[in] xCentCoord         x-coordinate of the center of mass in image
+ *  \param[in] yCentCoord         y-coordinate of the center of mass in image
  *
  *  \retrun nothing
  */
 void pCoordsNormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
                           float yCentCoord);
 
-/** normalize the image coordinates for quad coordinates
- *  \param[in] imgIn              input image
- *  \param[in] w                  size of width of the image
- *  \param[in] h                  size of height of the image
- *  \param[in, out] qCoords       center coordinates of each pixel
- *  \param[in] xCentCoord         x-coordinte of the center of mass in image
- *  \param[in] yCentCoord         y-coordinte of the center of mass in image
+/** normalize the quad coordinates for each pixel
+ *  \param[in] w                  width of the image
+ *  \param[in] h                  height of the image
+ *  \param[in, out] qCoords       quad coordinates of each pixel
+ *  \param[in] xCentCoord         x-coordinate of the center of mass in image
+ *  \param[in] yCentCoord         y-coordinate of the center of mass in image
  *
  *  \retrun nothing
  */
@@ -204,24 +205,23 @@ void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
                           float yCentCoord);
 
 /** inverse normalization of the image coordinates
- *  \param[in] imgIn              input image
  *  \param[in] w                  size of width of the image
  *  \param[in] h                  size of height of the image
  *  \param[in, out] pCoords       center coordinates of each pixel
- *  \param[in] xCentCoord         x-coordinte of the center of mass in image
- *  \param[in] yCentCoord         y-coordinte of the center of mass in image
+ *  \param[in] xCentCoord         x-coordinate of the center of mass in image
+ *  \param[in] yCentCoord         y-coordinate of the center of mass in image
  *
  *  \retrun nothing
  */
-void imgDenormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
-                        float yCentCoord);
+void pCoordsDenormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
+                            float yCentCoord);
 
 /** calculate moment of the image
  *  \param[in] imgIn             input image
- *  \param[in] w                 size of width of the image
- *  \param[in] h                 size of height of the image
+ *  \param[in] w                 width of the image
+ *  \param[in] h                 height of the image
  *  \param[in, out] mmt          an array for moments of the image
- *  \param[in, out] mmtDegree    the degree of moments
+ *  \param[in, out] mmtDegree    the degree of moments (p,q in [0, mmtDegree) )
  *
  *  \retrun nothing
  *  \note pseudo code of geometric

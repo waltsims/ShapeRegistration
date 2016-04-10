@@ -44,8 +44,7 @@ int main(int argc, char **argv) {
   }
 
   // Load the input image using opencv (load as "grayscale", since we are
-  // working
-  // only with binary shapes of single channel)
+  // working only with binary shapes of single channel)
   cv::Mat mIn = cv::imread(image.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
   // check
   if (mIn.data == NULL) {
@@ -83,9 +82,7 @@ int main(int argc, char **argv) {
   // But for CUDA it's better to work with layered images: rrr... ggg... bbb...
   // So we will convert as necessary, using interleaved "cv::Mat" for
   // loading/saving/displaying, and layered "float*" for CUDA computations
-  convert_mat_to_layered(
-      imgIn,
-      mIn);  // Replace this to remove the conversions, we don't use channels.
+  convert_mat_to_layered(imgIn, mIn);
 
   Timer timer;
   timer.start();
@@ -99,48 +96,200 @@ int main(int argc, char **argv) {
   cout << "time: " << t * 1000 << " ms" << endl;
 
   // show input image
-  showImage("Input", mIn, 100,
-            100);  // show at position (x_from_left=100,y_from_above=100)
+  showImage("Input", mIn, 100, 100);  // show at position (x_from_left=100,y_from_above=100)
 
-  // ### Display your own output images here as needed
 
-  /** function testings are from here */
+  /** function testings begin here */
 
+  // Test: cutMargins() [OK]
+  // Note: the input image circle.png is shifted up.
+  printf("---Testing the cutMargins()-----------------------\n");
   float *resizedImg;
   int resizedW;
   int resizedH;
   Margins margins;
 
   cutMargins(imgIn, w, h, resizedImg, resizedW, resizedH, margins);
+  printf("Dimensions of the original image: width: %d, height: %d.\n", w, h);
+  printf("Margins positions (starting from 0): top: %d, bottom: %d, left: %d, right: %d.\n", margins.top, margins.bottom, margins.left, margins.right);
+  printf("Dimensions of the cropped image: width: %d, height: %d.\n", resizedW, resizedH);
+  printf("Background margin sizes: top: %d, bottom: %d, left: %d, right: %d.\n", margins.top, h-(margins.bottom+1), margins.left, w-(margins.right+1) );
+  printf("--------------------------------------------------\n\n");
 
   cv::Mat resizedImgOut(resizedH, resizedW, CV_32FC1);
   convert_layered_to_mat(resizedImgOut, resizedImg);
-  showImage("Resized Output", resizedImgOut, 100 + w + 40 + w + 40, 100);
+  showImage("Cropped Output", resizedImgOut, 100 + w, 100);
+  // end of test: cutMargins().
 
-  TPSParams tpsParams;
+  // Test: addMargins() [OK]
+  printf("---Testing the addMargins()-----------------------\n");
+  float *recoveredImg = new float[(size_t)w * h];
+  addMargins(resizedImg, resizedW, resizedH, recoveredImg, w, h, margins);
+  printf("Showing the difference of the original and the recovered image (should be background)...\n");
+  cv::Mat mRecov(h, w, CV_32FC1);
+  convert_layered_to_mat(mRecov, recoveredImg);
+  showImage("Recovered vs original image", cv::abs(mIn-mRecov ), 300, 300);
+  printf("--------------------------------------------------\n\n");
+  // end of test: addMargins().
 
-  float xCentCoord;  // x-coordinte of the center of mass in the each channel
-  float yCentCoord;  // y-coordinte of the center of mass in the each channel
-
-  QuadCoords* qCoords = new QuadCoords[resizedW * resizedH];
-  setQuadCoords(qCoords, resizedW, resizedH);
-
-
+  // Test: centerOfMass() [OK]
+  printf("---Testing the centerOfMass()---------------------\n");
+  float xCentCoord;  // x-coordinate of the center of mass
+  float yCentCoord;  // y-coordinate of the center of mass
+  centerOfMass(imgIn, w, h, xCentCoord, yCentCoord);
+  printf("Center of mass of the original image (starting from 0): ( %f, %f)\n", xCentCoord, yCentCoord);
   centerOfMass(resizedImg, resizedW, resizedH, xCentCoord, yCentCoord);
+  printf("Center of mass of the cropped image (starting from 0): ( %f, %f)\n", xCentCoord, yCentCoord);
+  printf("--------------------------------------------------\n\n");
+  // end of test: centerOfMass().
 
-  printf("center of mass ( %.1f, %.1f)\n", xCentCoord, yCentCoord);
-
+  // Test: setPixelCoords() before normalization [OK]
+  printf("---Testing the setPixelCoords() [before Norm]-----\n");
   PixelCoords* pCoords = new PixelCoords[resizedW * resizedH];
   setPixelCoords(pCoords, resizedW, resizedH);
+  printf("pCoords[0].x = %f\n", pCoords[0].x);
+  printf("pCoords[0].y = %f\n", pCoords[0].y);
+  int lastIndex = (resizedW-1) + (resizedH-1)*resizedW;
+  printf("pCoords[last].x = %f\n", pCoords[lastIndex].x);
+  printf("pCoords[last].y = %f\n", pCoords[lastIndex].y);
+  float minPCoordX=pCoords[0].x, minPCoordY=pCoords[0].y;
+  float maxPCoordX=pCoords[0].x, maxPCoordY=pCoords[0].y;
+  int minPCoordXInd=0, minPCoordYInd=0;
+  int maxPCoordXInd=0, maxPCoordYInd=0;
+  int index;
+  /** Find the minimum and maximum pixel coordinates per x,y
+   *  and the respective x,y indices */
+  for (int y = 0; y < resizedH; y++) {
+    for (int x = 0; x < resizedW; x++) {
+      index = x + y * resizedW;
+      if (pCoords[index].x < minPCoordX) {
+        minPCoordX = pCoords[index].x;
+        minPCoordXInd = x;
+      }
+      if (pCoords[index].x > maxPCoordX) {
+        maxPCoordX = pCoords[index].x;
+        maxPCoordXInd = x;
+      }
+      if (pCoords[index].y < minPCoordY) {
+        minPCoordY = pCoords[index].x;
+        minPCoordYInd = y;
+      }
+      if (pCoords[index].y > maxPCoordY) {
+        maxPCoordY = pCoords[index].y;
+        maxPCoordYInd = y;
+      }
+    }
+  }
+  printf("Minimum/Maximum pixel coordinates:\nminX: %4.f (for x: %d), maxX: %4.f (for x: %d)\nminY: %4.f (for y: %d), maxY: %4.f (for y: %d) \n",
+          minPCoordX, minPCoordXInd, maxPCoordX, maxPCoordXInd,
+          minPCoordY, minPCoordYInd, maxPCoordY, maxPCoordYInd);
+  printf("--------------------------------------------------\n\n");
+  // end of test: setPixelCoords() before normalization.
 
-  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[0], qCoords[0].y[0]);
-  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[2], qCoords[0].y[2]);
+  // Test: setQuadCoords() before normalization [OK]
+  printf("---Testing the setQuadCoords() [before Norm]------\n");
+  QuadCoords* qCoords = new QuadCoords[resizedW * resizedH];
+  setQuadCoords(qCoords, resizedW, resizedH);
+  printf("qCoords[0].x[0] = %f, qCoords[0].x[1] = %f, qCoords[0].x[2] = %f, qCoords[0].x[3] = %f\n", qCoords[0].x[0], qCoords[0].x[1], qCoords[0].x[2], qCoords[0].x[3]);
+  printf("qCoords[0].y[0] = %f, qCoords[0].y[1] = %f, qCoords[0].y[2] = %f, qCoords[0].y[3] = %f\n", qCoords[0].y[0], qCoords[0].y[1], qCoords[0].y[2], qCoords[0].y[3]);
+  printf("qCoords[last].x[0] = %f, qCoords[last].x[1] = %f, qCoords[last].x[2] = %f, qCoords[last].x[3] = %f\n", qCoords[lastIndex].x[0], qCoords[lastIndex].x[1], qCoords[lastIndex].x[2], qCoords[lastIndex].x[3]);
+  printf("qCoords[last].y[0] = %f, qCoords[last].y[1] = %f, qCoords[last].y[2] = %f, qCoords[last].y[3] = %f\n", qCoords[lastIndex].y[0], qCoords[lastIndex].y[1], qCoords[lastIndex].y[2], qCoords[lastIndex].y[3]);
+  printf("--------------------------------------------------\n\n");
+  // end of test: setQuadCoords() before normalization.
 
+  // Test: pCoordsNormalization() [OK]
+  printf("---Testing the pCoordsNormalization()-------------\n");
   pCoordsNormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
-  qCoordsNormalization(resizedW, resizedH, qCoords, xCentCoord, yCentCoord);
-  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[0], qCoords[0].y[0]);
-  printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[2], qCoords[0].y[2]);
+  printf("pCoords[0].x = %f\n", pCoords[0].x);
+  printf("pCoords[0].y = %f\n", pCoords[0].y);
+  printf("pCoords[last].x = %f\n", pCoords[lastIndex].x);
+  printf("pCoords[last].y = %f\n", pCoords[lastIndex].y);
+  minPCoordX=pCoords[0].x, minPCoordY=pCoords[0].y;
+  maxPCoordX=pCoords[0].x, maxPCoordY=pCoords[0].y;
+  minPCoordXInd=0, minPCoordYInd=0;
+  maxPCoordXInd=0, maxPCoordYInd=0;
+  /** Find the minimum and maximum pixel coordinates per x,y
+   *  and the respective x,y indices */
+  for (int y = 0; y < resizedH; y++) {
+    for (int x = 0; x < resizedW; x++) {
+      index = x + y * resizedW;
+      if (pCoords[index].x < minPCoordX) {
+        minPCoordX = pCoords[index].x;
+        minPCoordXInd = x;
+      }
+      if (pCoords[index].x > maxPCoordX) {
+        maxPCoordX = pCoords[index].x;
+        maxPCoordXInd = x;
+      }
+      if (pCoords[index].y < minPCoordY) {
+        minPCoordY = pCoords[index].x;
+        minPCoordYInd = y;
+      }
+      if (pCoords[index].y > maxPCoordY) {
+        maxPCoordY = pCoords[index].y;
+        maxPCoordYInd = y;
+      }
+    }
+  }
+  printf("Minimum/Maximum pixel coordinates:\nminX: %f (for x: %d), maxX: %f (for x: %d)\nminY: %f (for y: %d), maxY: %f (for y: %d) \n",
+          minPCoordX, minPCoordXInd, maxPCoordX, maxPCoordXInd,
+          minPCoordY, minPCoordYInd, maxPCoordY, maxPCoordYInd);
+  printf("--------------------------------------------------\n\n");
+  // end of test: pCoordsNormalization().
 
+  // Test: qCoordsNormalization() [OK]
+  printf("---Testing the qCoordsNormalization()-------------\n");
+  qCoordsNormalization(resizedW, resizedH, qCoords, xCentCoord, yCentCoord);
+  printf("qCoords[0].x[0] = %f, qCoords[0].x[1] = %f, qCoords[0].x[2] = %f, qCoords[0].x[3] = %f\n", qCoords[0].x[0], qCoords[0].x[1], qCoords[0].x[2], qCoords[0].x[3]);
+  printf("qCoords[0].y[0] = %f, qCoords[0].y[1] = %f, qCoords[0].y[2] = %f, qCoords[0].y[3] = %f\n", qCoords[0].y[0], qCoords[0].y[1], qCoords[0].y[2], qCoords[0].y[3]);
+  printf("qCoords[last].x[0] = %f, qCoords[last].x[1] = %f, qCoords[last].x[2] = %f, qCoords[last].x[3] = %f\n", qCoords[lastIndex].x[0], qCoords[lastIndex].x[1], qCoords[lastIndex].x[2], qCoords[lastIndex].x[3]);
+  printf("qCoords[last].y[0] = %f, qCoords[last].y[1] = %f, qCoords[last].y[2] = %f, qCoords[last].y[3] = %f\n", qCoords[lastIndex].y[0], qCoords[lastIndex].y[1], qCoords[lastIndex].y[2], qCoords[lastIndex].y[3]);
+  printf("--------------------------------------------------\n\n");
+  // end of test: qCoordsNormalization().
+
+  // Test: pCoordsDenormalization() [in progress]
+  printf("---Testing the pCoordsDenormalization()-------------\n");
+  pCoordsDenormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+  printf("pCoords[0].x = %f\n", pCoords[0].x);
+  printf("pCoords[0].y = %f\n", pCoords[0].y);
+  printf("pCoords[last].x = %f\n", pCoords[lastIndex].x);
+  printf("pCoords[last].y = %f\n", pCoords[lastIndex].y);
+  minPCoordX=pCoords[0].x, minPCoordY=pCoords[0].y;
+  maxPCoordX=pCoords[0].x, maxPCoordY=pCoords[0].y;
+  minPCoordXInd=0, minPCoordYInd=0;
+  maxPCoordXInd=0, maxPCoordYInd=0;
+  /** Find the minimum and maximum pixel coordinates per x,y
+   *  and the respective x,y indices */
+  for (int y = 0; y < resizedH; y++) {
+    for (int x = 0; x < resizedW; x++) {
+      index = x + y * resizedW;
+      if (pCoords[index].x < minPCoordX) {
+        minPCoordX = pCoords[index].x;
+        minPCoordXInd = x;
+      }
+      if (pCoords[index].x > maxPCoordX) {
+        maxPCoordX = pCoords[index].x;
+        maxPCoordXInd = x;
+      }
+      if (pCoords[index].y < minPCoordY) {
+        minPCoordY = pCoords[index].x;
+        minPCoordYInd = y;
+      }
+      if (pCoords[index].y > maxPCoordY) {
+        maxPCoordY = pCoords[index].y;
+        maxPCoordYInd = y;
+      }
+    }
+  }
+  printf("Minimum/Maximum pixel coordinates:\nminX: %f (for x: %d), maxX: %f (for x: %d)\nminY: %f (for y: %d), maxY: %f (for y: %d) \n",
+          minPCoordX, minPCoordXInd, maxPCoordX, maxPCoordXInd,
+          minPCoordY, minPCoordYInd, maxPCoordY, maxPCoordYInd);
+  printf("--------------------------------------------------\n\n");
+  // end of test: pCoordsDenormalization().
+
+
+/**
+  TPSParams tpsParams;
   float* sigma = new float[2 * resizedW * resizedH];
   printf("---------------------------------\n");
   printf("pCoordsX 0: %f, pCoordsY 0: %f\n", pCoords[0].x, pCoords[0].y);
@@ -154,13 +303,16 @@ int main(int argc, char **argv) {
   qTPS(resizedW, resizedH, qCoords, tpsParams, DEGREE_IMAGE_MOMENT);
   printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[0], qCoords[0].y[0]);
   printf("qCoordsX 0: %f, qCoordsY 0: %f\n", qCoords[0].x[2], qCoords[0].y[2]);
+*/
 
   /*
   pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
                    float testY)*/
 
 
-  /** function testings are to here */
+  delete[] resizedImg;
+  delete[] recoveredImg;
+  /** function tests end here */
 
   // wait for key inputs
   cv::waitKey(0);

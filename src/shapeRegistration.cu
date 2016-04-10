@@ -308,6 +308,7 @@ float* pTPSradialApprox(TPSParams &tpsParams, PixelCoords pCoords, int mmtDegree
 
   float euclidianDist[2] = {0, 0};
   float* sum = new float[2];
+  sum[0] = 0; sum[1] = 0;
   int index;
 
   int dimSize = mmtDegree * mmtDegree;
@@ -364,6 +365,7 @@ float *qTPSradialApprox(TPSParams &tpsParams, QuadCoords qCoords, int mmtDegree,
                         int qIndex) {
   float euclidianDist[2] = {0, 0};
   float *sum = new float[2];
+  sum[0] = 0; sum[1] = 0;
   int index;
 
   int dimSize = mmtDegree * mmtDegree;

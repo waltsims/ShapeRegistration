@@ -13,7 +13,7 @@ if(CUDA_FOUND)
 	#find_package(libpng REQUIRED)
 
 	# Set the compilation flags for CUDA
-	set ( CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --std=c++11 --ptxas-options=-v --use_fast_math 
+	set ( CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --std=c++11 --ptxas-options=-v --use_fast_math
 	--compiler-options -Wall -lopencvhighgui -lopencv_core -lavcodec)
 
 	# Include the lmfit from the 3rdparty directory (used for the Levenberg-Marquardt solver)
@@ -29,11 +29,11 @@ if(CUDA_FOUND)
 	)
 
 	# Include the dependencies of lmfit
-	include_directories(3rdparty/lmfit-6.1/include)		
+	include_directories(3rdparty/lmfit-6.1/include)
 	file(GLOB lm 3rdparty/lmfit-6.1/lib/*.so)
 
 	# Specify the binary name and the source files to build
-	cuda_add_executable(sr src/main.cu src/helper.cu src/helper.h src/shapeRegistration.cu src/shapeRegistration.h ) 
+	cuda_add_executable(sr src/main.cu src/helper.cu src/helper.h src/shapeRegistration.cu src/shapeRegistration.h src/testing.cu src/testing.h) 
 	target_link_libraries(sr ${lm}  ${CUDA_LIBARIES} ${OpenCV_LIBS})
 
 else()
@@ -41,5 +41,3 @@ else()
 	message(CRITICAL_ERROR "CUDA cannot be found, please ensure CUDA dependencies are installed. CMake will exit now.")
 
 endif()
-
-

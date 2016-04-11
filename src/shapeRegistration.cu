@@ -374,13 +374,10 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
 
 float radialApprox( float x, float y, float cx, float cy ) {
 
-  float radBasis;
-
   float r = sqrt(pow(cx - x, 2) + pow(cy - y, 2));
 
-  radBasis = pow(r, 2) * log(pow(r, 2));
+  return r < 0.00001 ? 0 : r * r * log(r * r);
 
-  return radBasis;
 }
 
 void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,

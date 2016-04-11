@@ -322,14 +322,16 @@ void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
         }
       }
 
+		float tempPCoordsX = pCoords[index].x;
+		float tempPCoordsY = pCoords[index].y;
       // TODO this looks right but seems to be producing incorrect reuslts
       // at the boundaries..... see facebook discussion from sunday
-      pCoords[index].x = (tpsParams.affineParam[0] * pCoords[index].x) +
-                         (tpsParams.affineParam[1] * pCoords[index].y) +
+      pCoords[index].x = (tpsParams.affineParam[0] * tempPCoordsX) +
+                         (tpsParams.affineParam[1] * tempPCoordsY) +
                          tpsParams.affineParam[2] + freeDeformation[0];
 
-      pCoords[index].y = (tpsParams.affineParam[3] * pCoords[index].x) +
-                         (tpsParams.affineParam[4] * pCoords[index].y) +
+      pCoords[index].y = (tpsParams.affineParam[3] * tempPCoordsX) +
+                         (tpsParams.affineParam[4] * tempPCoordsY) +
                          tpsParams.affineParam[5] + freeDeformation[1];
     }
   }
@@ -371,15 +373,23 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
         printf("---------------------------------\n");
         */
 
+        /*cout << tpsParams.affineParam[0] << ", " << tpsParams.affineParam[1]*/
+             /*<< ", " << tpsParams.affineParam[2] << ", "*/
+             /*<< tpsParams.affineParam[3] << ", " << tpsParams.affineParam[4]*/
+             /*<< ", " << tpsParams.affineParam[5] << endl;*/
+
         // note:: change
+		float tempQCoordsX = qCoords[index].x[qIndex];
+		float tempQCoordsY = qCoords[index].y[qIndex];
+
         qCoords[index].x[qIndex] =
-            (tpsParams.affineParam[0] * qCoords[index].x[qIndex]) +
-            (tpsParams.affineParam[1] * qCoords[index].y[qIndex]) +
+            (tpsParams.affineParam[0] * tempQCoordsX) +
+            (tpsParams.affineParam[1] * tempQCoordsY) +
             tpsParams.affineParam[2] + freeDeformation[0];
 
         qCoords[index].y[qIndex] =
-            (tpsParams.affineParam[3] * qCoords[index].x[qIndex]) +
-            (tpsParams.affineParam[4] * qCoords[index].y[qIndex]) +
+            (tpsParams.affineParam[3] * tempQCoordsX) +
+            (tpsParams.affineParam[4] * tempQCoordsY) +
             tpsParams.affineParam[5] + freeDeformation[1];
       }
     }
@@ -427,6 +437,12 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
 void transpose(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
                int h, float *imgOut) {
   int index;
+  int p_index;
+  float testx[4] = {0, 0, 1, 1};
+  float testy[4] = {0, 1, 1, 0};
+
+  cout << "point in polygon: " << pointInPolygon(4, testx, testy, 0.5, 0.5);
+
   for (int j = 0; j < h; j++) {
     for (int i = 0; i < w; i++) {
       index = i + w * j;
@@ -438,12 +454,28 @@ void transpose(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
         // TODO for foreground points from origional image, if new pixel in
         // polygon --> Pixel = Foreground!
         // TODO create local index to search for neignboring points
-        /*for (int j = 0; j < h; j++) {*/
-        /*for (int i = 0; i < w; i++) {*/
+        for (int y = 0; y < h; y++) {
+          for (int x = 0; x < w; x++) {
+            p_index = x + w * y;
+			/*cout << "point: " << pCoords[p_index].x <<", "<<*/
+			 /*pCoords[p_index].y << endl;*/
+			/*cout << "polygonx: " << qCoords[index].x[0] << ", "*/
+			/*<< qCoords[index].x[1] << ", "*/
+			/*<< qCoords[index].x[2] << ", "*/
+			/*<< qCoords[index].x[3] << endl;*/
+			/*cout << "polygony: " << qCoords[index].y[0] << ", "*/
+			/*<< qCoords[index].y[1] << ", "*/
+			/*<< qCoords[index].y[2] << ", "*/
+			/*<< qCoords[index].y[3] << endl;*/
+			if ( pointInPolygon(4, xpolygon, ypolygon, pCoords[p_index].x,
+							  pCoords[p_index].y) ) {
 
-        if (pointInPolygon(4, xpolygon, ypolygon, pCoords[index].x,
-                           pCoords[index].y))
-          imgOut[index] = FOREGROUND;
+			  cout << "writing image at point :" << pCoords[p_index].x << ", " << pCoords[p_index].y << endl;
+
+              imgOut[p_index] = FOREGROUND;
+            }
+          }
+        }
       }
     }
   }
@@ -453,12 +485,15 @@ bool pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
                     float testY) {
   int i, j;
   bool c = false;
+
   for (i = 0, j = nVert - 1; i < nVert; j = i++) {
     if (((vertY[i] > testY) != (vertY[j] > testY)) &&
         (testX <
          (vertX[j] - vertX[i]) * (testY - vertY[i]) / (vertY[j] - vertY[i]) +
              vertX[i]))
-      c = !c;
+      c =! c;
   }
+
   return c;
+  
 }

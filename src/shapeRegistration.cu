@@ -343,7 +343,7 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
   for (int x = 0; x < w; x++) {
     for (int y = 0; y < h; y++) {
       index = x + w * y;
-     
+
       for (int qIndex = 0; qIndex < 4; qIndex++) {
         Q = 0;
          freeDeformation[0] = 0;
@@ -359,13 +359,13 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
            *  = (scale*x_1)  + (sheer*x_2) + translation
            *  = (        rotation        ) + translation
            */
-           
+
           // multiply with weights
           for (int i = 0; i < 2; i++) {
             freeDeformation[i] += tpsParams.localCoeff[k + i * dimSize] * Q;
           }
         }
-/*        
+/*
         printf("---------------------------------\n");
         printf ("freeDef[0]: %lf, freeDef[1]: %lf\n", freeDeformation[0], freeDeformation[1]);
         printf("---------------------------------\n");
@@ -388,9 +388,9 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
 
 float radialApprox( float x, float y, float cx, float cy ) {
 
-  float r = sqrt(pow(cx - x, 2) + pow(cy - y, 2));
+  float r2 = (cx - x)*(cx - x) + (cy - y)*(cy - x);
 
-  return r < 0.00001 ? 0 : r * r * log(r * r);
+  return r2 < 0.000001 ? 0 : r2 * log(r2);
 
 }
 

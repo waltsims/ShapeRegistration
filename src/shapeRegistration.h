@@ -38,8 +38,9 @@ struct TPSParams {
   /** affine parameters: a
    *  size: 2 X 3
    */
-  float affineParam[2 * 3] = {180.750570973114 , -16.6979777565757, 78.2371003511860,
-                               26.8971153700975, 230.948397768629 , 94.8716771317028};
+  float affineParam[2 * 3] = {180.750570973114, -16.6979777565757,
+                              78.2371003511860, 26.8971153700975,
+                              230.948397768629, 94.8716771317028};
   /** local coefficient: w
    *  size: 2 X degree of moment^2
    */
@@ -146,10 +147,12 @@ void setQuadCoords(QuadCoords *qCoords, int w, int h);
  *  \param[in] imgIn              array of the input image pixels
  *  \param[in] w                  width of the image
  *  \param[in] h                  height of the image
- *  \param[out] resizedImg        resized image which doesn't have margins (cropped)
+ *  \param[out] resizedImg        resized image which doesn't have margins
+ *(cropped)
  *  \param[out] resizedW          width of the resized image
  *  \param[out] resizedH          height of the resized image
- *  \param[out] margins           margin positions (first/last foreground indices)
+ *  \param[out] margins           margin positions (first/last foreground
+ *indices)
  *
  *  \retrun nothing
  */
@@ -163,7 +166,8 @@ void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
  *  \param[out] imgOut            array of the output, full size image pixels
  *  \param[in] w                  width of the image
  *  \param[in] h                  height of the image
- *  \param[in] margins            margin positions (first/last foreground indices)
+ *  \param[in] margins            margin positions (first/last foreground
+ *indices)
  *
  *  \retrun nothing
  */
@@ -215,8 +219,8 @@ void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
  *
  *  \retrun nothing
  */
-void pCoordsDenormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
-                            float yCentCoord);
+void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
+                            float xCentCoord, float yCentCoord);
 
 /** calculate moment of the image
  *  \param[in] imgIn             input image
@@ -243,18 +247,20 @@ void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree);
  *  \retrun                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void pTPS(int w, int h, PixelCoords* pCoords, TPSParams &tpsParams, int mmtDegree);
-
+void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams,
+          int mmtDegree);
 
 /** radial basis approximation
- *  \param[in] x				 x-coordinates of current pixel as structure
- *  \param[in] y				 y-coordinates of current pixel as structure
+ *  \param[in] x         x-coordinates of current pixel as
+ *structure
+ *  \param[in] y         y-coordinates of current pixel as
+ *structure
  *  \param[in] cx               cx-coordinate
  *  \param[in] cy               y-coordinate
  *
  *  \retrun radial basis function value
  */
-float radialApprox( float x, float y, float cx, float cy);
+float radialApprox(float x, float y, float cx, float cy);
 
 /** thin plate spline for quad coordinates
  *  \param[in] imgIn           input image
@@ -268,8 +274,8 @@ float radialApprox( float x, float y, float cx, float cy);
  *  \retrun                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void qTPS(int w, int h, QuadCoords* qCoords, TPSParams &tpsParams, int mmtDegree);
-
+void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
+          int mmtDegree);
 
 /** jacobian transformation
  *  \param[in] w               size of width of the image
@@ -305,6 +311,6 @@ void transpose(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
  * https://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html#Polyhedron
  */
 bool pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
-                   float testY);
+                    float testY);
 
 #endif  // SHAPEREGISTRATION_H

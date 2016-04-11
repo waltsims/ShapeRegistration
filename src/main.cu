@@ -337,6 +337,29 @@ int main(int argc, char **argv) {
 
   TPSParams tpsParams;
 
+  qTPS(resizedW, resizedH, qCoords, tpsParams, DIM_C_REF);
+
+  printf("==========================qTPS===============================\n");
+  printf(
+      "qCoords[0].x[0] = %f, qCoords[0].x[1] = %f, qCoords[0].x[2] = %f, "
+      "qCoords[0].x[3] = %f\n",
+      qCoords[0].x[0], qCoords[0].x[1], qCoords[0].x[2], qCoords[0].x[3]);
+  printf(
+      "qCoords[0].y[0] = %f, qCoords[0].y[1] = %f, qCoords[0].y[2] = %f, "
+      "qCoords[0].y[3] = %f\n",
+      qCoords[0].y[0], qCoords[0].y[1], qCoords[0].y[2], qCoords[0].y[3]);
+  printf(
+      "qCoords[last].x[0] = %f, qCoords[last].x[1] = %f, qCoords[last].x[2] = "
+      "%f, qCoords[last].x[3] = %f\n",
+      qCoords[lastIndex].x[0], qCoords[lastIndex].x[1], qCoords[lastIndex].x[2],
+      qCoords[lastIndex].x[3]);
+  printf(
+      "qCoords[last].y[0] = %f, qCoords[last].y[1] = %f, qCoords[last].y[2] = "
+      "%f, qCoords[last].y[3] = %f\n",
+      qCoords[lastIndex].y[0], qCoords[lastIndex].y[1], qCoords[lastIndex].y[2],
+      qCoords[lastIndex].y[3]);
+  printf("--------------------------------------------------\n\n");
+
 
   transpose(resizedImg, pCoords, qCoords, resizedW, resizedH, resizedImOut);
 

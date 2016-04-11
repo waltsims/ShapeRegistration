@@ -208,48 +208,6 @@
     printf("--------------------------------------------------\n\n");
     // end of test: qCoordsNormalization().
 
-    // Test: pCoordsDenormalization() [OK]
-    printf("---Testing the pCoordsDenormalization()-------------\n");
-    pCoordsDenormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
-    printf("pCoords[0].x = %f\n", pCoords[0].x);
-    printf("pCoords[0].y = %f\n", pCoords[0].y);
-    printf("pCoords[last].x = %f\n", pCoords[lastIndex].x);
-    printf("pCoords[last].y = %f\n", pCoords[lastIndex].y);
-    minPCoordX = pCoords[0].x, minPCoordY = pCoords[0].y;
-    maxPCoordX = pCoords[0].x, maxPCoordY = pCoords[0].y;
-    minPCoordXInd = 0, minPCoordYInd = 0;
-    maxPCoordXInd = 0, maxPCoordYInd = 0;
-    /** Find the minimum and maximum pixel coordinates per x,y
-     *  and the respective x,y indices */
-    for (int y = 0; y < resizedH; y++) {
-      for (int x = 0; x < resizedW; x++) {
-        index = x + y * resizedW;
-        if (pCoords[index].x < minPCoordX) {
-          minPCoordX = pCoords[index].x;
-          minPCoordXInd = x;
-        }
-        if (pCoords[index].x > maxPCoordX) {
-          maxPCoordX = pCoords[index].x;
-          maxPCoordXInd = x;
-        }
-        if (pCoords[index].y < minPCoordY) {
-          minPCoordY = pCoords[index].x;
-          minPCoordYInd = y;
-        }
-        if (pCoords[index].y > maxPCoordY) {
-          maxPCoordY = pCoords[index].y;
-          maxPCoordYInd = y;
-        }
-      }
-    }
-    printf(
-        "Minimum/Maximum pixel coordinates:\nminX: %f (for x: %d), maxX: %f (for "
-        "x: %d)\nminY: %f (for y: %d), maxY: %f (for y: %d) \n",
-        minPCoordX, minPCoordXInd, maxPCoordX, maxPCoordXInd, minPCoordY,
-        minPCoordYInd, maxPCoordY, maxPCoordYInd);
-    printf("--------------------------------------------------\n\n");
-    // end of test: pCoordsDenormalization().
-
     TPSParams tpsParams;
 
     // Test: pTPS() [in progress]
@@ -322,6 +280,48 @@
 
     resizedImOut = new float[resizedW * resizedH];
     // transpose(resizedImg, pCoords, qCoords, resizedW, resizedH, resizedImOut);
+
+    // Test: pCoordsDenormalization() [OK]
+    printf("---Testing the pCoordsDenormalization()-------------\n");
+    pCoordsDenormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+    printf("pCoords[0].x = %f\n", pCoords[0].x);
+    printf("pCoords[0].y = %f\n", pCoords[0].y);
+    printf("pCoords[last].x = %f\n", pCoords[lastIndex].x);
+    printf("pCoords[last].y = %f\n", pCoords[lastIndex].y);
+    minPCoordX = pCoords[0].x, minPCoordY = pCoords[0].y;
+    maxPCoordX = pCoords[0].x, maxPCoordY = pCoords[0].y;
+    minPCoordXInd = 0, minPCoordYInd = 0;
+    maxPCoordXInd = 0, maxPCoordYInd = 0;
+    /** Find the minimum and maximum pixel coordinates per x,y
+     *  and the respective x,y indices */
+    for (int y = 0; y < resizedH; y++) {
+      for (int x = 0; x < resizedW; x++) {
+        index = x + y * resizedW;
+        if (pCoords[index].x < minPCoordX) {
+          minPCoordX = pCoords[index].x;
+          minPCoordXInd = x;
+        }
+        if (pCoords[index].x > maxPCoordX) {
+          maxPCoordX = pCoords[index].x;
+          maxPCoordXInd = x;
+        }
+        if (pCoords[index].y < minPCoordY) {
+          minPCoordY = pCoords[index].x;
+          minPCoordYInd = y;
+        }
+        if (pCoords[index].y > maxPCoordY) {
+          maxPCoordY = pCoords[index].y;
+          maxPCoordYInd = y;
+        }
+      }
+    }
+    printf(
+        "Minimum/Maximum pixel coordinates:\nminX: %f (for x: %d), maxX: %f (for "
+        "x: %d)\nminY: %f (for y: %d), maxY: %f (for y: %d) \n",
+        minPCoordX, minPCoordXInd, maxPCoordX, maxPCoordXInd, minPCoordY,
+        minPCoordYInd, maxPCoordY, maxPCoordYInd);
+    printf("--------------------------------------------------\n\n");
+    // end of test: pCoordsDenormalization().
 
     convert_layered_to_mat(resizedImgOut, resizedImOut);
     showImage("Resized Output", resizedImgOut, 100 + w + 40 + w + 40, 100);

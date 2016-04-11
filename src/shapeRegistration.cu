@@ -405,33 +405,63 @@ float radialApprox( float x, float y, float cx, float cy ) {
 }
 
 void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
-                   float *ctrlP, int c_dim) {
-  int index;
-  int dimSize = c_dim * c_dim;
-  float radialApprox;
+                   int c_dim) {
+  // Index in the *jacobi
+  int indexP, indexJ;
+  // Number of control points
+  int K = c_dim * c_dim;
+  // Square of the distance of the control point from the pixel
   float squareOfNorm;
+  // Common term for all the i,j in each c_k,x combination (precomputed)
+  float precomp;
+  // x_j (x or y)
+  float x_j;
 
-  for (int i = 0; i < 2; i++) {
-    for (int j = 0; j < 2; j++) {
-      index = i + 2 * j;
-      jacobi[index] = tpsParams.affineParam[index];
-      radialApprox = 0;
-      for (int x = 0; x < w; x++) {
-        for (int y = 0; y < h; y++) {
-          squareOfNorm = 0;
-          for (int k = 0; k < dimSize; i++) {
-            int indexNorm = k + dimSize * i;
-            squareOfNorm = pow((tpsParams.ctrlP[indexNorm] - x), 2) +
-                           pow((tpsParams.ctrlP[indexNorm] - y), 2);
-          }
-          radialApprox += 2 *
-                          tpsParams.localCoeff[x + w * h + (i * (x + w * h))] *
-                          (ctrlP[x + w * h + (j * (x + w * h))] - y) *
-                          (1 + log(squareOfNorm));
+  // For each pixel
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      // Index of the pixel in the image
+      indexP = x + w * y;
+
+      // Reset the jacobi elements to a_ij for the current pixel
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+          indexJ = 4*indexP + i + 2*j;
+          jacobi[indexJ] = tpsParams.affineParam[i + 2*j];
         }
       }
+
+      // Note: synchronize here in the GPU version
+
+      // For each control point
+      for (int k = 0; k < K; k++) {
+        // Compute the argument of the log()
+        // squareOfNorm = (ck_x - x)^2 + (ck_y - y)^2
+        squareOfNorm = (tpsParams.ctrlP[k] - x)   * (tpsParams.ctrlP[k] - x)
+                     + (tpsParams.ctrlP[k+K] - y) * (tpsParams.ctrlP[k+K] - y);
+        if (squareOfNorm > 0.000001) {
+          // Precompute the reused term
+          precomp = 2 * (1 + log(squareOfNorm));
+        } else {
+          precomp = 2;
+        }
+        // For each of the four elements of the jacobian
+        for (int i = 0; i < 2; i++) {
+          for (int j = 0; j < 2; j++) {
+            // Index in the global jacobi array
+            indexJ = 4*indexP + i + 2*j;
+            // Do we need the x or the y in the place of x_j?
+            x_j = (j == 0 ? x : y);
+            // jacobi_ij -= precomp * w_ki * (c_kj - x_j)
+            jacobi[indexJ] -= precomp * tpsParams.localCoeff[k + i*K]
+                            * (tpsParams.ctrlP[k + j*K] - x_j);
+          }
+        }
+      }
+
     }
   }
+  return;
 }
 
 void transpose(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,

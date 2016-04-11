@@ -127,19 +127,19 @@ struct Margins {
 
 /** setter for pixel coordinates of each pixel
  *  \param[in] pCoords     array of pixelCoords struct
- *  \param[in] w           size of width of the image
- *  \param[in] h           size of height of the image
+ *  \param[in] w           width of the image
+ *  \param[in] h           height of the image
  *
- *  \retrun nothing
+ *  \return nothing
  */
 void setPixelCoords(PixelCoords *pCoords, int w, int h);
 
 /** setter for quad coordinates of each pixel
  *  \param[in, out] qCoords     array of quadCoords struct
- *  \param[in] w                size of width of the image
- *  \param[in] h                size of height of the image
+ *  \param[in] w                width of the image
+ *  \param[in] h                height of the image
  *
- *  \retrun nothing
+ *  \return nothing
  */
 void setQuadCoords(QuadCoords *qCoords, int w, int h);
 
@@ -154,7 +154,7 @@ void setQuadCoords(QuadCoords *qCoords, int w, int h);
  *  \param[out] margins           margin positions (first/last foreground
  *indices)
  *
- *  \retrun nothing
+ *  \return nothing
  */
 void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
                 int &resizedH, Margins &margins);
@@ -169,7 +169,7 @@ void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
  *  \param[in] margins            margin positions (first/last foreground
  *indices)
  *
- *  \retrun nothing
+ *  \return nothing
  */
 void addMargins(float *resizedimg, int resizedW, int resizedH, float *imgOut,
                 int w, int h, Margins &margins);
@@ -181,19 +181,19 @@ void addMargins(float *resizedimg, int resizedW, int resizedH, float *imgOut,
  *  \param[in, out] xCentCoord    x-coordinate of the center of mass
  *  \param[in, out] yCentCoord    y-coordinate of the center of mass
  *
- *  \retrun nothing
+ *  \return nothing
  */
 void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
                   float &yCentCoord);
 
 /** normalize the center coordinates for each pixel
- *  \param[in] w                  size of width of the image
- *  \param[in] h                  size of height of the image
+ *  \param[in] w                  width of the image
+ *  \param[in] h                  height of the image
  *  \param[in, out] pCoords       center coordinates of each pixel
  *  \param[in] xCentCoord         x-coordinate of the center of mass in image
  *  \param[in] yCentCoord         y-coordinate of the center of mass in image
  *
- *  \retrun nothing
+ *  \return nothing
  */
 void pCoordsNormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
                           float yCentCoord);
@@ -205,19 +205,19 @@ void pCoordsNormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
  *  \param[in] xCentCoord         x-coordinate of the center of mass in image
  *  \param[in] yCentCoord         y-coordinate of the center of mass in image
  *
- *  \retrun nothing
+ *  \return nothing
  */
 void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
                           float yCentCoord);
 
 /** inverse normalization of the image coordinates
- *  \param[in] w                  size of width of the image
- *  \param[in] h                  size of height of the image
+ *  \param[in] w                  width of the image
+ *  \param[in] h                  height of the image
  *  \param[in, out] pCoords       center coordinates of each pixel
  *  \param[in] xCentCoord         x-coordinate of the center of mass in image
  *  \param[in] yCentCoord         y-coordinate of the center of mass in image
  *
- *  \retrun nothing
+ *  \return nothing
  */
 void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
                             float xCentCoord, float yCentCoord);
@@ -229,7 +229,7 @@ void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
  *  \param[in, out] mmt          an array for moments of the image
  *  \param[in, out] mmtDegree    the degree of moments (p,q in [0, mmtDegree) )
  *
- *  \retrun nothing
+ *  \return nothing
  *  \note pseudo code of geometric
  * moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
  */
@@ -237,14 +237,14 @@ void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree);
 
 /** thin plate spline for pixel coordinates
  *  \param[in] imgIn           input image
- *  \param[in] w               size of width of the image
- *  \param[in] h               size of height of the image
+ *  \param[in] w               width of the image
+ *  \param[in] h               height of the image
  *  \param[in, out] sigma      to be added
  *  \param[in] tpsParams       parameters for thisn plate spline method
  *  \param[in] mmt             an array for moments of the image
  *  \param[in] mmtDegree       the degree of moments
  *
- *  \retrun                    nothing
+ *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
 void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams,
@@ -258,38 +258,38 @@ void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams,
  *  \param[in] cx               cx-coordinate
  *  \param[in] cy               y-coordinate
  *
- *  \retrun radial basis function value
+ *  \return radial basis function value
  */
 float radialApprox(float x, float y, float cx, float cy);
 
 /** thin plate spline for quad coordinates
  *  \param[in] imgIn           input image
- *  \param[in] w               size of width of the image
- *  \param[in] h               size of height of the image
+ *  \param[in] w               width of the image
+ *  \param[in] h               height of the image
  *  \param[in, out] sigma      to be added
  *  \param[in] tpsParams       parameters for thisn plate spline method
  *  \param[in] mmt             an array for moments of the image
  *  \param[in] mmtDegree       the degree of moments
  *
- *  \retrun                    nothing
+ *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
 void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
           int mmtDegree);
 
 /** jacobian transformation
- *  \param[in] w               size of width of the image
- *  \param[in] h               size of height of the image
- *  \param[in, out] jacobi     to be added
- *  \param[in] tpsParams       parameters for thisn plate spline method
- *  \param[in] ctrlP           c_k
- *  \param[in] mmtDegree       the degree of moments
+ *  \param[in] w               width of the image
+ *  \param[in] h               height of the image
+ *  \param[in, out] jacobi     array of size 4*w*h storing the four jacobian
+ *                             elements for each pixel.
+ *  \param[in] tpsParams       parameters for thin plate spline method
+ *  \param[in] c_dim           number of control points
  *
- *  \retrun                    nothing
+ *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
 void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
-                   float *ctrlP, int mmtDegree);
+                   int mmtDegree);
 /** Discription to come
  *
  * */
@@ -306,7 +306,7 @@ void transpose(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
  *  \param[in] testx       X-coordinate of the test point.
  *  \param[in] testy       Y-coordinate of the test point.
  *
- *  \retrun                check result
+ *  \return                check result
  *  \note
  * https://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html#Polyhedron
  */

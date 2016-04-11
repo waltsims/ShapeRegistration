@@ -281,8 +281,19 @@
     resizedImOut = new float[resizedW * resizedH];
     // transpose(resizedImg, pCoords, qCoords, resizedW, resizedH, resizedImOut);
 
+    // Test: jacobianTrans() [in progress]
+    printf("---Testing the jacobianTrans()------------------\n");
+    float *jacobi = new float[4*resizedW*resizedH];
+    jacobianTrans(resizedW, resizedH, jacobi, tpsParams, DIM_C_REF);
+    printf("Jacobi[0]: (0,0) = %f, (0,1) = %f, (1,0) = %f, (1,1) = %f\n",
+          jacobi[0], jacobi[1], jacobi[2], jacobi[3]);
+    printf("Jacobi[last]: (0,0) = %f, (0,1) = %f, (1,0) = %f, (1,1) = %f\n",
+          jacobi[4*lastIndex], jacobi[4*lastIndex+1], jacobi[4*lastIndex+2], jacobi[4*lastIndex+3]);
+    printf("--------------------------------------------------\n\n");
+    // end of test: jacobianTrans().
+
     // Test: pCoordsDenormalization() [OK]
-    printf("---Testing the pCoordsDenormalization()-------------\n");
+    printf("---Testing the pCoordsDenormalization()---------\n");
     pCoordsDenormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
     printf("pCoords[0].x = %f\n", pCoords[0].x);
     printf("pCoords[0].y = %f\n", pCoords[0].y);

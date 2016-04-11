@@ -257,29 +257,27 @@
     printf("---Testing the qTPS()---------------------------\n");
     qTPS(resizedW, resizedH, qCoords, tpsParams, DIM_C_REF);
 
-    printf(
-        "qCoords[0].x[0] = %f, qCoords[0].x[1] = %f, qCoords[0].x[2] = %f, "
-        "qCoords[0].x[3] = %f\n",
-        qCoords[0].x[0], qCoords[0].x[1], qCoords[0].x[2], qCoords[0].x[3]);
-    printf(
-        "qCoords[0].y[0] = %f, qCoords[0].y[1] = %f, qCoords[0].y[2] = %f, "
-        "qCoords[0].y[3] = %f\n",
-        qCoords[0].y[0], qCoords[0].y[1], qCoords[0].y[2], qCoords[0].y[3]);
-    printf(
-        "qCoords[last].x[0] = %f, qCoords[last].x[1] = %f, qCoords[last].x[2] = "
-        "%f, qCoords[last].x[3] = %f\n",
-        qCoords[lastIndex].x[0], qCoords[lastIndex].x[1], qCoords[lastIndex].x[2],
-        qCoords[lastIndex].x[3]);
-    printf(
-        "qCoords[last].y[0] = %f, qCoords[last].y[1] = %f, qCoords[last].y[2] = "
-        "%f, qCoords[last].y[3] = %f\n",
-        qCoords[lastIndex].y[0], qCoords[lastIndex].y[1], qCoords[lastIndex].y[2],
-        qCoords[lastIndex].y[3]);
-    printf("--------------------------------------------------\n\n");
-    // end of test: qTPS().
+	printf(
+		"qCoords[0].x[0] = %f, qCoords[0].x[1] = %f, qCoords[0].x[2] = %f, "
+		"qCoords[0].x[3] = %f\n",
+		qCoords[0].x[0], qCoords[0].x[1], qCoords[0].x[2], qCoords[0].x[3]);
+	printf(
+		"qCoords[0].y[0] = %f, qCoords[0].y[1] = %f, qCoords[0].y[2] = %f, "
+		"qCoords[0].y[3] = %f\n",
+		qCoords[0].y[0], qCoords[0].y[1], qCoords[0].y[2], qCoords[0].y[3]);
+	printf(
+		"qCoords[last].x[0] = %f, qCoords[last].x[1] = %f, qCoords[last].x[2] = "
+		"%f, qCoords[last].x[3] = %f\n",
+		qCoords[lastIndex].x[0], qCoords[lastIndex].x[1], qCoords[lastIndex].x[2],
+		qCoords[lastIndex].x[3]);
+	printf(
+		"qCoords[last].y[0] = %f, qCoords[last].y[1] = %f, qCoords[last].y[2] = "
+		"%f, qCoords[last].y[3] = %f\n",
+		qCoords[lastIndex].y[0], qCoords[lastIndex].y[1], qCoords[lastIndex].y[2],
+		qCoords[lastIndex].y[3]);
+	printf("--------------------------------------------------\n\n");
+	// end of test: qTPS().
 
-    resizedImOut = new float[resizedW * resizedH];
-    // transpose(resizedImg, pCoords, qCoords, resizedW, resizedH, resizedImOut);
 
     // Test: jacobianTrans() [in progress]
     printf("---Testing the jacobianTrans()------------------\n");
@@ -305,34 +303,42 @@
     maxPCoordXInd = 0, maxPCoordYInd = 0;
     /** Find the minimum and maximum pixel coordinates per x,y
      *  and the respective x,y indices */
-    for (int y = 0; y < resizedH; y++) {
-      for (int x = 0; x < resizedW; x++) {
-        index = x + y * resizedW;
-        if (pCoords[index].x < minPCoordX) {
-          minPCoordX = pCoords[index].x;
-          minPCoordXInd = x;
-        }
-        if (pCoords[index].x > maxPCoordX) {
-          maxPCoordX = pCoords[index].x;
-          maxPCoordXInd = x;
-        }
-        if (pCoords[index].y < minPCoordY) {
-          minPCoordY = pCoords[index].x;
-          minPCoordYInd = y;
-        }
-        if (pCoords[index].y > maxPCoordY) {
-          maxPCoordY = pCoords[index].y;
-          maxPCoordYInd = y;
-        }
-      }
-    }
-    printf(
-        "Minimum/Maximum pixel coordinates:\nminX: %f (for x: %d), maxX: %f (for "
-        "x: %d)\nminY: %f (for y: %d), maxY: %f (for y: %d) \n",
-        minPCoordX, minPCoordXInd, maxPCoordX, maxPCoordXInd, minPCoordY,
-        minPCoordYInd, maxPCoordY, maxPCoordYInd);
-    printf("--------------------------------------------------\n\n");
+    /*for (int y = 0; y < resizedH; y++) {*/
+      /*for (int x = 0; x < resizedW; x++) {*/
+        /*index = x + y * resizedW;*/
+        /*if (pCoords[index].x < minPCoordX) {*/
+          /*minPCoordX = pCoords[index].x;*/
+          /*minPCoordXInd = x;*/
+        /*}*/
+        /*if (pCoords[index].x > maxPCoordX) {*/
+          /*maxPCoordX = pCoords[index].x;*/
+          /*maxPCoordXInd = x;*/
+        /*}*/
+        /*if (pCoords[index].y < minPCoordY) {*/
+          /*minPCoordY = pCoords[index].x;*/
+          /*minPCoordYInd = y;*/
+        /*}*/
+        /*if (pCoords[index].y > maxPCoordY) {*/
+          /*maxPCoordY = pCoords[index].y;*/
+          /*maxPCoordYInd = y;*/
+        /*}*/
+      /*}*/
+    /*}*/
+    /*printf(*/
+        /*"Minimum/Maximum pixel coordinates:\nminX: %f (for x: %d), maxX: %f (for "*/
+        /*"x: %d)\nminY: %f (for y: %d), maxY: %f (for y: %d) \n",*/
+        /*minPCoordX, minPCoordXInd, maxPCoordX, maxPCoordXInd, minPCoordY,*/
+        /*minPCoordYInd, maxPCoordY, maxPCoordYInd);*/
+    /*printf("--------------------------------------------------\n\n");*/
     // end of test: pCoordsDenormalization().
+
+    resizedImOut = new float[resizedW * resizedH];
+    setPixelCoords(pCoords, resizedW, resizedH);
+    pCoordsNormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+	/*setQuadCoords(qCoords, resizedW, resizedH);*/
+	/*qCoordsNormalization(resizedW, resizedH, qCoords, xCentCoord, yCentCoord);*/
+
+    transpose(resizedImg, pCoords, qCoords, resizedW, resizedH, resizedImOut);
 
     convert_layered_to_mat(resizedImgOut, resizedImOut);
     showImage("Resized Output", resizedImgOut, 100 + w + 40 + w + 40, 100);

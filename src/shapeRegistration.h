@@ -293,7 +293,7 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
 /** Discription to come
  *
  * */
-void transpose(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
+void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
                int h, float *imgOut);
 
 /** check whether a point is inside polygon or not

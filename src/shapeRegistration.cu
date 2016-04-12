@@ -294,9 +294,11 @@ void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree) {
 
 // PixelCoords* pCoordsSigma
 void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
+
   int index;
   int dimSize = c_dim * c_dim;
   float Q;
+
  float freeDeformation[2] = {0, 0};
   // for every pixel location
   for (int x = 0; x < w; x++) {
@@ -338,18 +340,23 @@ void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
 }
 
 void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
+
+
   int index;
   int dimSize = c_dim * c_dim;
   float Q;
   float freeDeformation[2] = {0, 0};
+
   for (int x = 0; x < w; x++) {
-    for (int y = 0; y < h; y++) {
+	for (int y = 0; y < h; y++) {
+       /*int x = w / 2, y = h / 2;*/
+	
       index = x + w * y;
 
       for (int qIndex = 0; qIndex < 4; qIndex++) {
         Q = 0;
-         freeDeformation[0] = 0;
-         freeDeformation[1] = 0;
+        freeDeformation[0] = 0;
+        freeDeformation[1] = 0;
         // for all c_m support coordinates
         for (int k = 0; k < dimSize; k++) {
           // calculate radial approximation
@@ -373,10 +380,6 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
         printf("---------------------------------\n");
         */
 
-        /*cout << tpsParams.affineParam[0] << ", " << tpsParams.affineParam[1]*/
-             /*<< ", " << tpsParams.affineParam[2] << ", "*/
-             /*<< tpsParams.affineParam[3] << ", " << tpsParams.affineParam[4]*/
-             /*<< ", " << tpsParams.affineParam[5] << endl;*/
 
         // note:: change
 		float tempQCoordsX = qCoords[index].x[qIndex];
@@ -391,8 +394,8 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
             (tpsParams.affineParam[3] * tempQCoordsX) +
             (tpsParams.affineParam[4] * tempQCoordsY) +
             tpsParams.affineParam[5] + freeDeformation[1];
-      }
-    }
+	  }
+	}
   }
 }
 
@@ -400,7 +403,7 @@ float radialApprox( float x, float y, float cx, float cy ) {
 
   float r2 = (cx - x)*(cx - x) + (cy - y)*(cy - x);
 
-  return r2 < 0.000001 ? 0 : r2 * log(r2);
+  return r2 < 0.00000001 ? 0 : r2 * log(r2);
 
 }
 
@@ -464,14 +467,10 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
   return;
 }
 
-void transpose(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
+void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
                int h, float *imgOut) {
   int index;
   int p_index;
-  float testx[4] = {0, 0, 1, 1};
-  float testy[4] = {0, 1, 1, 0};
-
-  cout << "point in polygon: " << pointInPolygon(4, testx, testy, 0.5, 0.5);
 
   for (int j = 0; j < h; j++) {
     for (int i = 0; i < w; i++) {
@@ -481,29 +480,15 @@ void transpose(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
                              qCoords[index].x[2], qCoords[index].x[3]};
         float ypolygon[4] = {qCoords[index].y[0], qCoords[index].y[1],
                              qCoords[index].y[2], qCoords[index].y[3]};
-        // TODO for foreground points from origional image, if new pixel in
-        // polygon --> Pixel = Foreground!
         // TODO create local index to search for neignboring points
+		// withing bounding box of polygon
         for (int y = 0; y < h; y++) {
           for (int x = 0; x < w; x++) {
             p_index = x + w * y;
-			/*cout << "point: " << pCoords[p_index].x <<", "<<*/
-			 /*pCoords[p_index].y << endl;*/
-			/*cout << "polygonx: " << qCoords[index].x[0] << ", "*/
-			/*<< qCoords[index].x[1] << ", "*/
-			/*<< qCoords[index].x[2] << ", "*/
-			/*<< qCoords[index].x[3] << endl;*/
-			/*cout << "polygony: " << qCoords[index].y[0] << ", "*/
-			/*<< qCoords[index].y[1] << ", "*/
-			/*<< qCoords[index].y[2] << ", "*/
-			/*<< qCoords[index].y[3] << endl;*/
+
 			if ( pointInPolygon(4, xpolygon, ypolygon, pCoords[p_index].x,
-							  pCoords[p_index].y) ) {
-
-			  cout << "writing image at point :" << pCoords[p_index].x << ", " << pCoords[p_index].y << endl;
-
+							  pCoords[p_index].y) ) 
               imgOut[p_index] = FOREGROUND;
-            }
           }
         }
       }

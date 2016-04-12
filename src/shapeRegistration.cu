@@ -24,10 +24,10 @@ void setPixelCoords(PixelCoords *pCoords, int w, int h) {
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       index = x + y * w;
-      pCoords[index].x = (float)x;
-      pCoords[index].y = (float)y;
-      // printf("x = %d, y = %d, index = %d, pCoords.x = %f, pCoords.y = %f.\n",
-      //       x, y, index, pCoords[index].x, pCoords[index].y);
+	  //bug fix was to switch indexes here.... works for now
+	  //TODO look for cause of this and repair in future!!!!
+      pCoords[index].x = (float)y;
+      pCoords[index].y = (float)x;
     }
   }
 }
@@ -184,12 +184,6 @@ void pCoordsNormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
   float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
-  // Debug
-  printf(
-      "normXFactor = %f, normYFactor = %f, xCentCoord = %f, yCentCoord = %f, "
-      "width = %d, height = %d\n",
-      normXFactor, normYFactor, xCentCoord, yCentCoord, w, h);
-
   // Index in the image array
   int index;
 
@@ -212,12 +206,6 @@ void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
   // Scaling factors per x,y (1/sx, 1/sy in the Matlab implementation)
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
   float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
-
-  // Debug
-  printf(
-      "normXFactor = %f, normYFactor = %f, xCentCoord = %f, yCentCoord = %f, "
-      "width = %d, height = %d\n",
-      normXFactor, normYFactor, xCentCoord, yCentCoord, w, h);
 
   // Index in the image array
   int index;
@@ -247,12 +235,6 @@ void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
   // Scaling factors per x,y (1/sx, 1/sy in the Matlab implementation)
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
   float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
-
-  // Debug
-  printf(
-      "normXFactor = %f, normYFactor = %f, xCentCoord = %f, yCentCoord = %f, "
-      "width = %d, height = %d\n",
-      normXFactor, normYFactor, xCentCoord, yCentCoord, w, h);
 
   // Index in the image array
   int index;
@@ -371,7 +353,7 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
 
           // multiply with weights
           for (int i = 0; i < 2; i++) {
-            freeDeformation[i] += tpsParams.localCoeff[k + i * dimSize] * Q;
+            freeDeformation[i] += tpsParams.localCoeff[k + (i * dimSize)] * Q;
           }
         }
 /*
@@ -401,9 +383,9 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
 
 float radialApprox( float x, float y, float cx, float cy ) {
 
-  float r2 = (cx - x)*(cx - x) + (cy - y)*(cy - x);
+  float r2 = (cx - x)*(cx - x) + (cy - y)*(cy - y);
 
-  return r2 < 0.00000001 ? 0 : r2 * log(r2);
+  return r2 < 0.0000000001 ? 0 : r2 * log(r2);
 
 }
 
@@ -442,6 +424,7 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
         // squareOfNorm = (ck_x - x)^2 + (ck_y - y)^2
         squareOfNorm = (tpsParams.ctrlP[k] - x)   * (tpsParams.ctrlP[k] - x)
                      + (tpsParams.ctrlP[k+K] - y) * (tpsParams.ctrlP[k+K] - y);
+		//TODO this should be globaly defined as eps
         if (squareOfNorm > 0.000001) {
           // Precompute the reused term
           precomp = 2 * (1 + log(squareOfNorm));
@@ -467,14 +450,15 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
   return;
 }
 
-void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
-               int h, float *imgOut) {
+void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_w,
+              int t_h, int o_w, int o_h, float *imgOut) {
+	
   int index;
   int p_index;
 
-  for (int j = 0; j < h; j++) {
-    for (int i = 0; i < w; i++) {
-      index = i + w * j;
+  for (int j = 0; j < t_h; j++) {
+    for (int i = 0; i < t_w; i++) {
+      index = i + t_w * j;
       if (imgIn[index] == FOREGROUND) {
         float xpolygon[4] = {qCoords[index].x[0], qCoords[index].x[1],
                              qCoords[index].x[2], qCoords[index].x[3]};
@@ -482,9 +466,9 @@ void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
                              qCoords[index].y[2], qCoords[index].y[3]};
         // TODO create local index to search for neignboring points
 		// withing bounding box of polygon
-        for (int y = 0; y < h; y++) {
-          for (int x = 0; x < w; x++) {
-            p_index = x + w * y;
+        for (int y = 0; y < o_h; y++) {
+          for (int x = 0; x < o_w; x++) {
+            p_index = x + o_w * y;
 
 			if ( pointInPolygon(4, xpolygon, ypolygon, pCoords[p_index].x,
 							  pCoords[p_index].y) ) 

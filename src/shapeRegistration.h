@@ -68,13 +68,16 @@ struct TPSParams {
    *  25 total points odered x then y dimensions
    */
   float ctrlP[2 * DIM_C_REF * DIM_C_REF] = {
+	  //xx
       -0.333333333333333, -0.333333333333333, -0.333333333333333,
       -0.333333333333333, -0.333333333333333, -0.166666666666667,
       -0.166666666666667, -0.166666666666667, -0.166666666666667,
       -0.166666666666667, 0, 0, 0, 0, 0, 0.166666666666667, 0.166666666666667,
       0.166666666666667, 0.166666666666667, 0.166666666666667,
       0.333333333333333, 0.333333333333333, 0.333333333333333,
-      0.333333333333333, 0.333333333333333, -0.333333333333333,
+      0.333333333333333, 0.333333333333333, 
+	  
+	  -0.333333333333333,
       -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
       -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
       0.333333333333333, -0.333333333333333, -0.166666666666667, 0,
@@ -293,8 +296,8 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
 /** Discription to come
  *
  * */
-void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int w,
-               int h, float *imgOut);
+void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_w,
+              int t_h, int o_w, int o_h, float *imgOut);
 
 /** check whether a point is inside polygon or not
  *  \param[in] nVert       Number of vertices in the polygon. Whether to repeat

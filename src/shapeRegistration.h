@@ -285,10 +285,11 @@ void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree);
  *
  */
 void objectiveFuncition(float *observationImg, float *templateImg,
-                          float *jacobi, int ro_w, int ro_h,
-                          double *normalization, TPSParams &tpsParams,
-                          QuadCoords *qTemplate, PixelCoords *pTemplate,
-                          PixelCoords * pObservation, int rt_w, int rt_h);
+                        float *jacobi, int ro_w, int ro_h,
+                        double *normalization, TPSParams &tpsParams,
+                        QuadCoords *qTemplate, PixelCoords *pTemplate,
+                        PixelCoords *pObservation, int rt_w, int rt_h,
+                        float *residual, float *normalisation);
 /** thin plate spline for pixel coordinates
  *  \param[in] imgIn           input image
  *  \param[in] w               width of the image
@@ -342,7 +343,7 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
+void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords, TPSParams &tpsParams,
                    int mmtDegree);
 /** Discription to come
  *

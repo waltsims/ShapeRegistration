@@ -339,10 +339,9 @@ void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
                  int mmtDegree) {
   // Compute all the combinations of the (p+q)-order image moments
   // Keep in mind that p,q go from 0 to mmtDegree-1.
-  for (int p = 0; p < mmtDegree; p++) {
-    for (int q = 0; q < mmtDegree; q++) {
-      // Initialize the current image moment to zero
-      mmt[p + (mmtDegree * q)] = 0;
+  for (int q = 0; q < mmtDegree; q++) {
+    for (int p = 0; p < mmtDegree; p++) {
+      int mmtIndex = p + q * mmtDegree;
 
       // Compute the image moments taking the contributions from all the pixels
       for (int y = 0; y < h; y++) {
@@ -352,7 +351,7 @@ void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
            *  need to check later
            */
 
-          mmt[index + (p + (mmtDegree * q))] = pow(pImg[index].x, p + 1) *
+          mmt[mmtIndex * ( w * h) + index] = pow(pImg[index].x, p + 1) *
                                       pow(pImg[index].y, q + 1) * imgIn[index];
         }
       }
@@ -362,18 +361,19 @@ void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
 
 void objectiveFuncition(float *observationImg, float *templateImg,
                         float *jacobi, int ro_w, int ro_h,
-                        double *normalization, TPSParams &tpsParams,
+                        double *normalisation, TPSParams &tpsParams,
                         QuadCoords *qTemplate, PixelCoords *pTemplate,
                         PixelCoords *pObservation, int rt_w, int rt_h,
                         float *residual) {
-
   int momentDeg = 9;
   float observationMoment[momentDeg * momentDeg * ro_w * ro_h];
   float templateMoment[momentDeg * momentDeg * rt_w * rt_h];
-  float sumTempMoment[momentDeg * momentDeg] = { };
-  float sumObsMoment[momentDeg * momentDeg] = { };
-
   
+  float sumTempMoment[momentDeg * momentDeg] ;
+  float sumObsMoment[momentDeg * momentDeg] ;
+  cout << sumTempMoment[0]<< endl;
+
+  residual = 0;
 
   // calculate tps transformation of template
 
@@ -389,32 +389,28 @@ void objectiveFuncition(float *observationImg, float *templateImg,
   imageMoment(templateImg, pTemplate, rt_w, rt_h, templateMoment, momentDeg);
 
   // get jacobian of current tps params
-  jacobianTrans(rt_w, rt_h, jacobi, tpsParams, DIM_C_REF);
+  jacobianTrans(rt_w, rt_h, jacobi, pTemplate, tpsParams, DIM_C_REF);
   // get determinant of Jacobian
 
   for (int index = 0; index < momentDeg * momentDeg; index++) {
     for (int y = 0; y < rt_h; y++) {
       for (int x = 0; x < rt_w; x++) {
-		  sumTempMoment[index] += templateMoment[index *( x + rt_h * w)] * jacobi[x + rt_h * w];
-
+        sumTempMoment[index] +=
+            templateMoment[index * (rt_h * rt_w) + (x + rt_h * y)] *
+            jacobi[x + rt_h * y];
       }
     }
-  }
 
-  for (int index = 0; index < momentDeg * momentDeg; index++) {
     for (int y = 0; y < ro_h; y++) {
       for (int x = 0; x < ro_w; x++) {
-		  sumObsMoment[index] += observationMoment[index *( x + ro_h * w)];
-
+        sumObsMoment[index] +=
+            observationMoment[index * (ro_h * ro_w) + (x + ro_h * y)];
       }
     }
+
+    residual[index] +=
+        (sumObsMoment[index] - sumTempMoment[index]) / normalisation[index];
   }
-
-  for (int index = 0; index < momentDeg * momentDeg; index++) {
-	 
-		residual += (sumObsMoment[index] - sumTempMoment[index] ) / normalisation[index];
-	  }
-
 };
 
 // PixelCoords* pCoordsSigma
@@ -523,8 +519,8 @@ float radialApprox( float x, float y, float cx, float cy ) {
 
 }
 
-void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
-                   int c_dim) {
+void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords,
+                   TPSParams &tpsParams, int c_dim) {
   // Index in the image and in the *jacobi
   int indexP;
   // Number of control points
@@ -560,8 +556,8 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
       for (int k = 0; k < K; k++) {
         // Compute the argument of the log()
         // squareOfNorm = (ck_x - x)^2 + (ck_y - y)^2
-        squareOfNorm = (tpsParams.ctrlP[k] - x)   * (tpsParams.ctrlP[k] - x)
-                     + (tpsParams.ctrlP[k+K] - y) * (tpsParams.ctrlP[k+K] - y);
+        squareOfNorm = (tpsParams.ctrlP[k] - pCoords[indexP].x)   * (tpsParams.ctrlP[k] - pCoords[indexP].x)
+                     + (tpsParams.ctrlP[k+K] - pCoords[indexP].y) * (tpsParams.ctrlP[k+K] - pCoords[indexP].y);
 		//TODO this should be globaly defined as eps
         if (squareOfNorm > 0.000001) {
           // Precompute the reused term
@@ -575,7 +571,7 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
             // Index in the local jacobi elements array
             indexJ = i + 2*j;
             // Do we need the x or the y in the place of x_j?
-            x_j = (j == 0 ? x : y);
+            x_j = (j == 0 ? pCoords[indexP].x : pCoords[indexP].y);
             // jacobi_ij -= precomp * w_ki * (c_kj - x_j)
             jacEl[indexJ] -= precomp * tpsParams.localCoeff[k + i*K]
                             * (tpsParams.ctrlP[k + j*K] - x_j);

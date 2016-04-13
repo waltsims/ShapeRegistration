@@ -22,7 +22,6 @@
     // Note: the input image circle.png is shifted up.
     printf("---Testing the cutMargins()-----------------------\n");
     float *resizedImg;
-    float *resizedImOut;
     int resizedW;
     int resizedH;
     Margins margins;
@@ -282,7 +281,7 @@
     // Test: jacobianTrans() [in progress]
     printf("---Testing the jacobianTrans()------------------\n");
     float *jacobi = new float[resizedW*resizedH];
-    jacobianTrans(resizedW, resizedH, jacobi, tpsParams, DIM_C_REF);
+    jacobianTrans(resizedW, resizedH, jacobi, pCoords, tpsParams, DIM_C_REF);
     printf("Jacobi[0]: %f\n", jacobi[0]);
     printf("Jacobi[last]: %f\n", jacobi[lastIndex]);
     printf("--------------------------------------------------\n\n");
@@ -330,16 +329,7 @@
     /*printf("--------------------------------------------------\n\n");*/
     // end of test: pCoordsDenormalization().
 
-    resizedImOut = new float[resizedW * resizedH];
-    setPixelCoords(pCoords, resizedW, resizedH);
-    pCoordsNormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
-	/*setQuadCoords(qCoords, resizedW, resizedH);*/
-	/*qCoordsNormalization(resizedW, resizedH, qCoords, xCentCoord, yCentCoord);*/
 
-    // transpose(resizedImg, pCoords, qCoords, resizedW, resizedH, resizedImOut);
-
-    convert_layered_to_mat(resizedImgOut, resizedImOut);
-    showImage("Resized Output", resizedImgOut, 100 + w + 40 + w + 40, 100);
 
     delete[] resizedImg;
     delete[] recoveredImg;

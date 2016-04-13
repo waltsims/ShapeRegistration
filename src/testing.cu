@@ -338,7 +338,7 @@
 	/*setQuadCoords(qCoords, resizedW, resizedH);*/
 	/*qCoordsNormalization(resizedW, resizedH, qCoords, xCentCoord, yCentCoord);*/
 
-    transpose(resizedImg, pCoords, qCoords, resizedW, resizedH, resizedImOut);
+    // transpose(resizedImg, pCoords, qCoords, resizedW, resizedH, resizedImOut);
 
     convert_layered_to_mat(resizedImgOut, resizedImOut);
     showImage("Resized Output", resizedImgOut, 100 + w + 40 + w + 40, 100);

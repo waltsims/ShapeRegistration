@@ -40,17 +40,15 @@ int main(int argc, char **argv) {
   string templateStr = "";
   ret = getParam("t", templateStr, argc, argv);
   if (!ret) cerr << "ERROR: no template image specified" << endl;
-  if (argc <= 1) {
-    cout << "Usage: " << argv[0] << " -t <template>" << endl;
-    return 1;
-  }
 
   // input observation image
   string observationStr = "";
   ret = getParam("o", observationStr, argc, argv);
-  if (!ret) cerr << "ERROR: no observationStr image specified" << endl;
-  if (argc <= 1) {
-    cout << "Usage: " << argv[0] << " -o <observationStr>" << endl;
+  if (!ret) cerr << "ERROR: no observation image specified" << endl;
+
+  // show the usage instructions
+  if (argc <= 3) {
+    cout << "Usage: " << argv[0] << " -t <template> -o <observation>" << endl;
     return 1;
   }
 

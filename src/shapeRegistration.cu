@@ -16,6 +16,88 @@
 #include "shapeRegistration.h"
 #include <stdio.h>
 
+double  normFactor[81] = {1.5707963267949,
+					  0.471404520791033,
+					  0.196349540849362,
+					  0.0942809041582067,
+					  0.0490873852123405,
+					  0.026937401188059,
+					  0.0153398078788564,
+					  0.00897913372935302,          
+					  0.00536893275759974,
+					  0.471404520791033,
+					  0.125,
+					  0.0471404520791033,
+					  0.0208333333333333,
+					  0.0101015254455221,
+					  0.00520833333333333,
+					  0.00280597929042281,          
+					  0.0015625,
+					  0.00089281159240726,
+					  0.196349540849362,
+					  0.0471404520791033,
+					  0.0163624617374468,
+					  0.00673435029701476,
+					  0.00306796157577128,
+					  0.00149652228822551,          
+					  0.00076699039394282,
+					  0.000408142442243319,
+					  0.000223705531566656,
+					  0.0942809041582067,
+					  0.0208333333333333,
+					  0.00673435029701476,
+					  0.00260416666666667,
+					  0.00112239171616913,          
+					  0.000520833333333333,
+					  0.000255089026402074,
+					  0.000130208333333333,
+					  0.0000686778148005585,
+					  0.0490873852123405,
+					  0.0101015254455221,
+					  0.00306796157577128,
+					  0.00112239171616913,          
+					  0.000460194236365692,
+					  0.000204071221121659,
+					  0.0000958737992428525,
+					  0.000047093358720383,
+					  0.0000239684498107131,
+					  0.0269374011880590,
+					  0.00520833333333333,
+					  0.00149652228822551,          
+					  0.000520833333333333,
+					  0.000204071221121659,
+					  0.0000868055555555556,
+					  0.0000392444656003192,
+					  0.0000186011904761905,
+					  0.0000091570419734078,
+					  0.0153398078788564,
+					  0.00280597929042281,          
+					  0.00076699039394282,
+					  0.000255089026402074,
+					  0.0000958737992428525,
+					  0.0000392444656003192,
+					  0.0000171203212933665,
+					  0.00000784889312006383,
+					  0.00000374507028292392,
+					  0.00897913372935302,
+					  0.0015625,
+					  0.000408142442243319,
+					  0.000130208333333333,
+					  0.0000470933587203830,
+					  0.0000186011904761905,
+					  0.00000784889312006383,
+					  0.00000348772321428571,
+					  0.00000161594858354255,          
+					  0.00536893275759974,
+					  0.00089281159240726,
+					  0.000223705531566656,
+					  0.0000686778148005585,
+					  0.0000239684498107131,
+					  0.0000091570419734078,
+					  0.00000374507028292392,
+					  0.00000161594858354255,
+					  0.000000728208110568542};
+
 void setPixelCoords(PixelCoords *pCoords, int w, int h) {
   // Index in the image array with sizes w,h.
   int index;
@@ -252,7 +334,9 @@ void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
   }
 }
 
-void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree) {
+
+void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
+                 int mmtDegree) {
   // Compute all the combinations of the (p+q)-order image moments
   // Keep in mind that p,q go from 0 to mmtDegree-1.
   for (int p = 0; p < mmtDegree; p++) {
@@ -263,16 +347,75 @@ void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree) {
       // Compute the image moments taking the contributions from all the pixels
       for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
+          int index = x + (w * y);
           /** note: (q+p)th order in the dissertation but not here,
            *  need to check later
            */
-          mmt[p + (mmtDegree * q)] +=
-              pow(x, p + 1) * pow(y, q + 1) * imgIn[x + (w * y)];
+
+          mmt[index + (p + (mmtDegree * q))] = pow(pImg[index].x, p + 1) *
+                                      pow(pImg[index].y, q + 1) * imgIn[index];
         }
       }
     }
   }
 }
+
+void objectiveFuncition(float *observationImg, float *templateImg,
+                        float *jacobi, int ro_w, int ro_h,
+                        double *normalization, TPSParams &tpsParams,
+                        QuadCoords *qTemplate, PixelCoords *pTemplate,
+                        PixelCoords *pObservation, int rt_w, int rt_h,
+                        float *residual) {
+
+  int momentDeg = 9;
+  float observationMoment[momentDeg * momentDeg * ro_w * ro_h];
+  float templateMoment[momentDeg * momentDeg * rt_w * rt_h];
+  float sumTempMoment[momentDeg * momentDeg] = { };
+  float sumObsMoment[momentDeg * momentDeg] = { };
+
+  
+
+  // calculate tps transformation of template
+
+  qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
+
+  transfer(templateImg, pObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,
+           observationImg);
+
+  // get moments of TPS transformation of template
+  imageMoment(observationImg, pObservation, ro_w, ro_h, observationMoment,
+              momentDeg);
+
+  imageMoment(templateImg, pTemplate, rt_w, rt_h, templateMoment, momentDeg);
+
+  // get jacobian of current tps params
+  jacobianTrans(rt_w, rt_h, jacobi, tpsParams, DIM_C_REF);
+  // get determinant of Jacobian
+
+  for (int index = 0; index < momentDeg * momentDeg; index++) {
+    for (int y = 0; y < rt_h; y++) {
+      for (int x = 0; x < rt_w; x++) {
+		  sumTempMoment[index] += templateMoment[index *( x + rt_h * w)] * jacobi[x + rt_h * w];
+
+      }
+    }
+  }
+
+  for (int index = 0; index < momentDeg * momentDeg; index++) {
+    for (int y = 0; y < ro_h; y++) {
+      for (int x = 0; x < ro_w; x++) {
+		  sumObsMoment[index] += observationMoment[index *( x + ro_h * w)];
+
+      }
+    }
+  }
+
+  for (int index = 0; index < momentDeg * momentDeg; index++) {
+	 
+		residual += (sumObsMoment[index] - sumTempMoment[index] ) / normalisation[index];
+	  }
+
+};
 
 // PixelCoords* pCoordsSigma
 void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
@@ -323,7 +466,6 @@ void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
 
 void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
 
-
   int index;
   int dimSize = c_dim * c_dim;
   float Q;
@@ -331,7 +473,6 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
 
   for (int x = 0; x < w; x++) {
 	for (int y = 0; y < h; y++) {
-       /*int x = w / 2, y = h / 2;*/
 
       index = x + w * y;
 
@@ -345,7 +486,6 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
           Q = radialApprox(qCoords[index].x[qIndex], qCoords[index].y[qIndex],
                            tpsParams.ctrlP[k], tpsParams.ctrlP[k + dimSize]);
 
-/*          printf ("Q: %lf\n", Q);*/
           /**   (a_i1 *x_1)  + (a_i2 *x_2) + a_i3
            *  = (scale*x_1)  + (sheer*x_2) + translation
            *  = (        rotation        ) + translation
@@ -356,12 +496,6 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
             freeDeformation[i] += tpsParams.localCoeff[k + (i * dimSize)] * Q;
           }
         }
-/*
-        printf("---------------------------------\n");
-        printf ("freeDef[0]: %lf, freeDef[1]: %lf\n", freeDeformation[0], freeDeformation[1]);
-        printf("---------------------------------\n");
-        */
-
 
         // note:: change
 		float tempQCoordsX = qCoords[index].x[qIndex];
@@ -503,3 +637,4 @@ bool pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
   return c;
 
 }
+

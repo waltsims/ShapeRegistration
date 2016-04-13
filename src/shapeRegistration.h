@@ -75,8 +75,8 @@ struct TPSParams {
       -0.166666666666667, 0, 0, 0, 0, 0, 0.166666666666667, 0.166666666666667,
       0.166666666666667, 0.166666666666667, 0.166666666666667,
       0.333333333333333, 0.333333333333333, 0.333333333333333,
-      0.333333333333333, 0.333333333333333, 
-	  
+      0.333333333333333, 0.333333333333333,
+
 	  -0.333333333333333,
       -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
       -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
@@ -280,11 +280,11 @@ float radialApprox(float x, float y, float cx, float cy);
 void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
           int mmtDegree);
 
-/** jacobian transformation
+/** jacobian of the transformation
  *  \param[in] w               width of the image
  *  \param[in] h               height of the image
- *  \param[in, out] jacobi     array of size 4*w*h storing the four jacobian
- *                             elements for each pixel.
+ *  \param[in, out] jacobi     array of size w*h storing the determinant of the
+ *                             jacobian at each pixel
  *  \param[in] tpsParams       parameters for thin plate spline method
  *  \param[in] c_dim           number of control points
  *

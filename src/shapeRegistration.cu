@@ -332,7 +332,7 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
   for (int x = 0; x < w; x++) {
 	for (int y = 0; y < h; y++) {
        /*int x = w / 2, y = h / 2;*/
-	
+
       index = x + w * y;
 
       for (int qIndex = 0; qIndex < 4; qIndex++) {
@@ -391,8 +391,8 @@ float radialApprox( float x, float y, float cx, float cy ) {
 
 void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
                    int c_dim) {
-  // Index in the *jacobi
-  int indexP, indexJ;
+  // Index in the image and in the *jacobi
+  int indexP;
   // Number of control points
   int K = c_dim * c_dim;
   // Square of the distance of the control point from the pixel
@@ -401,6 +401,10 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
   float precomp;
   // x_j (x or y)
   float x_j;
+  // Temporary storage of the Jacobian elements, in order to compute the determinant
+  float jacEl[4];
+  // Index in the local jacEl
+  int indexJ;
 
   // For each pixel
   for (int y = 0; y < h; y++) {
@@ -408,11 +412,11 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
       // Index of the pixel in the image
       indexP = x + w * y;
 
-      // Reset the jacobi elements to a_ij for the current pixel
+      // Reset the local jacobi elements to a_ij for the current pixel
       for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2; j++) {
-          indexJ = 4*indexP + i + 2*j;
-          jacobi[indexJ] = tpsParams.affineParam[i + 2*j];
+          indexJ = i + 2*j;
+          jacEl[indexJ] = tpsParams.affineParam[i + 2*j];
         }
       }
 
@@ -434,16 +438,19 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
         // For each of the four elements of the jacobian
         for (int i = 0; i < 2; i++) {
           for (int j = 0; j < 2; j++) {
-            // Index in the global jacobi array
-            indexJ = 4*indexP + i + 2*j;
+            // Index in the local jacobi elements array
+            indexJ = i + 2*j;
             // Do we need the x or the y in the place of x_j?
             x_j = (j == 0 ? x : y);
             // jacobi_ij -= precomp * w_ki * (c_kj - x_j)
-            jacobi[indexJ] -= precomp * tpsParams.localCoeff[k + i*K]
+            jacEl[indexJ] -= precomp * tpsParams.localCoeff[k + i*K]
                             * (tpsParams.ctrlP[k + j*K] - x_j);
           }
         }
       }
+
+      // Compute the determinant of the local jacobi elements
+      jacobi[indexP] = jacEl[0]*jacEl[3] - jacEl[1]*jacEl[2];
 
     }
   }
@@ -452,7 +459,7 @@ void jacobianTrans(int w, int h, float *jacobi, TPSParams &tpsParams,
 
 void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_w,
               int t_h, int o_w, int o_h, float *imgOut) {
-	
+
   int index;
   int p_index;
 
@@ -471,7 +478,7 @@ void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_w,
             p_index = x + o_w * y;
 
 			if ( pointInPolygon(4, xpolygon, ypolygon, pCoords[p_index].x,
-							  pCoords[p_index].y) ) 
+							  pCoords[p_index].y) )
               imgOut[p_index] = FOREGROUND;
           }
         }
@@ -494,5 +501,5 @@ bool pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
   }
 
   return c;
-  
+
 }

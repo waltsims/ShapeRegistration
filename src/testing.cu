@@ -281,12 +281,10 @@
 
     // Test: jacobianTrans() [in progress]
     printf("---Testing the jacobianTrans()------------------\n");
-    float *jacobi = new float[4*resizedW*resizedH];
+    float *jacobi = new float[resizedW*resizedH];
     jacobianTrans(resizedW, resizedH, jacobi, tpsParams, DIM_C_REF);
-    printf("Jacobi[0]: (0,0) = %f, (0,1) = %f, (1,0) = %f, (1,1) = %f\n",
-          jacobi[0], jacobi[1], jacobi[2], jacobi[3]);
-    printf("Jacobi[last]: (0,0) = %f, (0,1) = %f, (1,0) = %f, (1,1) = %f\n",
-          jacobi[4*lastIndex], jacobi[4*lastIndex+1], jacobi[4*lastIndex+2], jacobi[4*lastIndex+3]);
+    printf("Jacobi[0]: %f\n", jacobi[0]);
+    printf("Jacobi[last]: %f\n", jacobi[lastIndex]);
     printf("--------------------------------------------------\n\n");
     // end of test: jacobianTrans().
 

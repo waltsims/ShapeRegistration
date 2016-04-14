@@ -417,12 +417,13 @@ void objectiveFunction(float *observationImg, float *templateImg,
 	  sumTempMoment[init] = (float)0;
   }
 
+  // get the jacobian at each pixel with the current tps params
+  jacobianTrans(rt_w, rt_h, jacobi, pTemplate, tpsParams, DIM_C_REF);
 
   // calculate tps transformation of template
-
   qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
 
-  transfer(templateImg, pObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,
+  transfer(templateImg, pTemplate, qTemplate, rt_w, rt_h, ro_w, ro_h,
            observationImg);
 
   // get moments of TPS transformation of template
@@ -431,10 +432,7 @@ void objectiveFunction(float *observationImg, float *templateImg,
 
   imageMoment(templateImg, pTemplate, rt_w, rt_h, templateMoment, momentDeg);
 
-  // get jacobian of current tps params
-  jacobianTrans(rt_w, rt_h, jacobi, pTemplate, tpsParams, DIM_C_REF);
   // get determinant of Jacobian
-
   for (int index = 0; index < momentDeg * momentDeg; index++) {
     for (int y = 0; y < rt_h; y++) {
       for (int x = 0; x < rt_w; x++) {

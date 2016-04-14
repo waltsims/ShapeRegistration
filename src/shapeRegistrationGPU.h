@@ -216,5 +216,11 @@ void transferGPU(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_
  */
 bool pointInPolygonGPU(int nVert, float *vertX, float *vertY, float testX,
                     float testY);
+void objectiveFunctionGPU(float *observationImg, float *templateImg,
+                        float *jacobi, int ro_w, int ro_h,
+                        double *normalisation, TPSParams &tpsParams,
+                        QuadCoords *qTemplate, PixelCoords *pTemplate,
+                        PixelCoords *pObservation, int rt_w, int rt_h,
+                        float *residual) ;
 
 #endif  // SHAPEREGISTRATION_H

@@ -158,6 +158,28 @@ void setQuadCoordsGPU(QuadCoords *h_qCoords, int h_w, int h_h) {
   CUDA_CHECK;
 }
 
+/*__global__ void cutMarginsGPU(float *imgIn, int d_w, int d_h, float *&resizedImg,*/
+                   /*int resizedW, int resizedH, Margins &margins) {*/
+  /*int index;*/
+  
+  /*extern __shared__ float s_Img[];*/
+
+  /*int x = threadIdx.x + blockDim.x * blockIdx.x;*/
+  /*int y = threadIdx.y + blockDim.y * blockIdx.y;*/
+  /*//TODO load thread data into shared memory*/
+  /*index = x + d_w * y ;*/
+
+  /*int s_ind = threadIdx.x + blockDim.x * threadIdx.y;*/
+  /*s_Img[s_ind] = imgIn[index];*/
+  /*__syncthreads();*/
+
+  /*for (unsigned int s = 1; s < blockDim.x; s *= 2) {*/
+    /*r_index = s * 2 * threadIdx.x;*/
+
+    /*if (x < d_w && y < d_h && s < blockDim.x) {*/
+    /*}*/
+  /*}*/
+/*}*/
 
 void cutMarginsGPU(float *imgIn, int w, int h, float *&resizedImg,
                    int &resizedW, int &resizedH, Margins &margins) {
@@ -485,7 +507,6 @@ __device__ float radialApproxKernel(float d_x, float d_y, float d_cx, float d_cy
 }
 
 
-// PixelCoords* pCoordsSigma
 __global__ void pTPSGPUKernel(int d_w, int d_h, PixelCoords *d_pCoords,
                               TPSParams d_tpsParams, int d_cDim) {
   int index;
@@ -560,7 +581,7 @@ void pTPSGPU(int h_w, int h_h, PixelCoords *h_pCoords, TPSParams &h_tpsParams,
 }
 
 
-__global__ void qTPSGPUKernel(int d_w, int d_h, QuadCoords *d_qCoords,
+__global__ void qTPSKernel(int d_w, int d_h, QuadCoords *d_qCoords,
                               TPSParams d_tpsParams, int d_cDim) {
   int index;
 
@@ -609,7 +630,6 @@ __global__ void qTPSGPUKernel(int d_w, int d_h, QuadCoords *d_qCoords,
 
 void qTPSGPU(int h_w, int h_h, QuadCoords *h_qCoords, TPSParams &h_tpsParams,
              int h_cDim) {
-
   dim3 block = dim3(128, 1, 1);
   dim3 grid =
       dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
@@ -623,7 +643,7 @@ void qTPSGPU(int h_w, int h_h, QuadCoords *h_qCoords, TPSParams &h_tpsParams,
              cudaMemcpyHostToDevice);
   CUDA_CHECK;
 
-  qTPSGPUKernel<<<grid, block>>>(h_w, h_h, d_qCoords, h_tpsParams, h_cDim);
+  qTPSKernel<<<grid, block>>>(h_w, h_h, d_qCoords, h_tpsParams, h_cDim);
   CUDA_CHECK;
 
   cudaMemcpy(h_qCoords, d_qCoords, h_h * h_w * sizeof(QuadCoords),
@@ -642,28 +662,27 @@ float radialApproxGPU(float x, float y, float cx, float cy) {
   return r2 < 0.0000000001 ? 0 : r2 * log(r2);
 }
 
-void jacobianTransGPU(int w, int h, float *jacobi, TPSParams &tpsParams,
+__global__ void jacobianTransGPU(int w, int h, float *jacobi, TPSParams &tpsParams,
                       int c_dim) {
-  // Index in the *jacobi
-  int indexP, indexJ;
-  // Number of control points
-  int K = c_dim * c_dim;
-  // Square of the distance of the control point from the pixel
-  float squareOfNorm;
-  // Common term for all the i,j in each c_k,x combination (precomputed)
-  float precomp;
-  // x_j (x or y)
-  float x_j;
-
   // For each pixel
-  for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) {
-      // Index of the pixel in the image
-      indexP = x + w * y;
+  int indexP;
+
+  int x = threadIdx.x + blockDim.x * blockIdx.x;
+  int y = threadIdx.y + blockDim.y * blockIdx.y;
+
+  indexP= x + d_w * y;
+  int dimSize = d_cDim * d_cDim;
+  float Q;
+  float freeDeformation[2] = {0, 0};
+  //TODO allocate Jacobi 4 x as large as image
+
+  if (x < d_w && y < d_h) {
 
       // Reset the jacobi elements to a_ij for the current pixel
       for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2; j++) {
+			//TODO adjust this argument for better data locality?
+			//why not make the stride indexP between values??
           indexJ = 4 * indexP + i + 2 * j;
           jacobi[indexJ] = tpsParams.affineParam[i + 2 * j];
         }
@@ -672,9 +691,11 @@ void jacobianTransGPU(int w, int h, float *jacobi, TPSParams &tpsParams,
       // Note: synchronize here in the GPU version
 
       // For each control point
+	  //TODO GPU K reduce
       for (int k = 0; k < K; k++) {
         // Compute the argument of the log()
         // squareOfNorm = (ck_x - x)^2 + (ck_y - y)^2
+		// TODO does one need to use shared memory for this?
         squareOfNorm =
             (tpsParams.ctrlP[k] - x) * (tpsParams.ctrlP[k] - x) +
             (tpsParams.ctrlP[k + K] - y) * (tpsParams.ctrlP[k + K] - y);
@@ -700,6 +721,20 @@ void jacobianTransGPU(int w, int h, float *jacobi, TPSParams &tpsParams,
       }
     }
   }
+}
+void jacobianTransGPU(int w, int h, float *jacobi, TPSParams &tpsParams,
+                      int c_dim) {
+  // Index in the *jacobi
+  int indexP, indexJ;
+  // Number of control points
+  int K = c_dim * c_dim;
+  // Square of the distance of the control point from the pixel
+  float squareOfNorm;
+  // Common term for all the i,j in each c_k,x combination (precomputed)
+  float precomp;
+  // x_j (x or y)
+  float x_j;
+
   return;
 }
 
@@ -851,3 +886,79 @@ void transferGPU(float *h_imgIn, PixelCoords *h_pCoords, QuadCoords *h_qCoords,
   cudaFree(d_imgOut);
   CUDA_CHECK;
 }
+
+__global__ void objectiveFunctionGPU(float *d_observationImg, float *d_templateImg,
+                        float *d_jacobi, int d_ow, int d_oh,
+                        double *d_normalisation, TPSParams d_tpsParams,
+                        QuadCoords *d_qTemplate, PixelCoords *d_pTemplate,
+                        PixelCoords *d_pObservation, int d_tw, int rt_h,
+                        float *d_residual) {
+	
+    residual[index] =
+        (sumObsMoment[index] - sumTempMoment[index]) / normalisation[index];
+
+  
+
+}
+void objectiveFunctionGPU(float *observationImg, float *templateImg,
+                        float *jacobi, int ro_w, int ro_h,
+                        double *normalisation, TPSParams &tpsParams,
+                        QuadCoords *qTemplate, PixelCoords *pTemplate,
+                        PixelCoords *pObservation, int rt_w, int rt_h,
+                        float *residual) {
+  int momentDeg = 9;
+
+  float * observationMoment = new float[momentDeg * momentDeg * ro_w * ro_h];
+  float * templateMoment= new float[momentDeg * momentDeg * rt_w * rt_h];
+  
+
+  float sumTempMoment[momentDeg * momentDeg] ;
+  float sumObsMoment[momentDeg * momentDeg] ;
+  //init moment array
+  for ( int init = 0; init < momentDeg * momentDeg; init ++){
+	  sumObsMoment[init] =(float)0;
+	  sumTempMoment[init] = (float)0;
+  }
+
+  qTPSKernel<<<grid, block>>>(d_tw, d_th, d_qTemplate, d_tpsParams, d_cDim);
+
+  transferKernel << <grid, block>>>
+      (d_templateImg, d_pObservation, d_qTemplate, d_ow, d_th, d_ow, d_oh, d_imgOut);
+
+  //TODO how and when to allocate memory for observation moments and moment deg.
+  imageMomentKernel<<<grid, block>>>(d_observationImg, d_pObservation, d_ow, 
+                                     d_oh, d_observationMoment, d_mmtDegree);
+  imageMomentKernel<<<grid, block>>>(d_templateImg, d_pTemplate, d_tw, 
+                                     d_th, d_templateMoment, d_mmtDegree);
+
+  //TODO call jacobian kernel here
+
+  // get jacobian of current tps params
+  jacobianTrans(rt_w, rt_h, jacobi, pTemplate, tpsParams, DIM_C_REF);
+  // get determinant of Jacobian
+
+  //TODO two reduces needed here
+  for (int index = 0; index < momentDeg * momentDeg; index++) {
+    for (int y = 0; y < rt_h; y++) {
+      for (int x = 0; x < rt_w; x++) {
+        sumTempMoment[index] +=
+            templateMoment[index * (rt_h * rt_w) + (x + rt_w * y)] *
+            jacobi[x + rt_w * y];
+      }
+    }
+
+    for (int y = 0; y < ro_h; y++) {
+      for (int x = 0; x < ro_w; x++) {
+        sumObsMoment[index] +=
+            observationMoment[index * (ro_h * ro_w) + (x + ro_w * y)];
+      }
+    }
+
+    residual[index] =
+        (sumObsMoment[index] - sumTempMoment[index]) / normalisation[index];
+	
+
+  }
+  delete[] observationMoment;
+  delete[] templateMoment;
+};

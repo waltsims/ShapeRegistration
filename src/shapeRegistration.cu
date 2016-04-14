@@ -593,7 +593,7 @@ void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords,
       for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2; j++) {
           indexJ = i + 2*j;
-          jacEl[indexJ] = tpsParams.affineParam[i + 2*j];
+          jacEl[indexJ] = tpsParams.affineParam[i + 3*j];
         }
       }
 

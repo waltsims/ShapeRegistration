@@ -267,9 +267,6 @@ void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
       for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
           int index = x + (w * y);
-          /** note: (q+p)th order in the dissertation but not here,
-           *  need to check later
-           */
 
           mmt[mmtIndex * ( w * h) + index] = pow(pImg[index].x, p + 1) *
                                       pow(pImg[index].y, q + 1) * imgIn[index];

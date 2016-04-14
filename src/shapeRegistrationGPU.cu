@@ -54,6 +54,69 @@ void setPixelCoordsGPU(PixelCoords *h_pCoords, int h_w, int h_h) {
   CUDA_CHECK;
 }
 
+__global__ void imageMomentKernel(float *d_imgIn, PixelCoords *d_pImg, int d_w,
+                                  int d_h, float *d_mmt, int d_mmtDegree) {
+  int index;
+
+  int x = threadIdx.x + blockDim.x * blockIdx.x;
+  int y = threadIdx.y + blockDim.y * blockIdx.y;
+
+  if (x < d_w && y < d_h) {
+    index = x + y * d_w;
+    // Compute all the combinations of the (p+q)-order image moments
+    // Keep in mind that p,q go from 0 to mmtDegree-1.
+
+    for (int q = 0; q < d_mmtDegree; q++) {
+      for (int p = 0; p < d_mmtDegree; p++) {
+        int mmtIndex = p + q * d_mmtDegree;
+
+        // Compute the image moments taking the contributions from all the
+        // pixels
+
+        d_mmt[mmtIndex * (d_w * d_h) + index] = pow(d_pImg[index].x, p + 1) *
+                                                pow(d_pImg[index].y, q + 1) *
+                                                d_imgIn[index];
+      }
+    }
+  }
+}
+
+void imageMomentGPU(float *h_imgIn, PixelCoords *h_pImg, int h_w, int h_h,
+                    float *h_mmt, int h_mmtDegree) {
+
+  dim3 block = dim3(128, 1, 1); 
+  dim3 grid = dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y,
+                   1);
+
+  PixelCoords *d_pImg;
+  cudaMalloc(&d_pImg, h_w * h_h * sizeof(PixelCoords));
+  CUDA_CHECK;
+
+  float *d_imgIn;
+  cudaMalloc(&d_imgIn, h_w * h_h * sizeof(float));
+  CUDA_CHECK;
+
+  float *d_mmt;
+  cudaMalloc(&d_mmt, h_mmtDegree * h_mmtDegree * h_w * h_h * sizeof(float));
+  CUDA_CHECK;
+
+  cudaMemcpy(d_imgIn, h_imgIn, h_w * h_h * sizeof(float), cudaMemcpyHostToDevice);CUDA_CHECK;
+  cudaMemcpy(d_pImg, h_pImg, h_w * h_h * sizeof(PixelCoords), cudaMemcpyHostToDevice);CUDA_CHECK;
+
+  imageMomentKernel <<<grid, block>>> (d_imgIn, d_pImg, h_w, h_h, d_mmt, h_mmtDegree);
+
+  cudaMemcpy(h_mmt, d_mmt, h_mmtDegree * h_mmtDegree * h_w * h_h * sizeof(float), cudaMemcpyDeviceToHost);
+  
+
+  cudaFree(d_imgIn);
+  CUDA_CHECK;
+  cudaFree(d_mmt);
+  CUDA_CHECK;
+  cudaFree(d_pImg);
+  CUDA_CHECK;
+  
+}
+
 __global__ void setQuadCoordsKernel(QuadCoords *d_qCoords, int d_w, int d_h) {
   int index;
 
@@ -415,27 +478,6 @@ void qCoordsNormalizationGPU(int h_w, int h_h, QuadCoords *h_qCoords,
   CUDA_CHECK;
 }
 
-void imageMomentGPU(float *imgIn, int w, int h, float *mmt, int mmtDegree) {
-  // Compute all the combinations of the (p+q)-order image moments
-  // Keep in mind that p,q go from 0 to mmtDegree-1.
-  for (int p = 0; p < mmtDegree; p++) {
-    for (int q = 0; q < mmtDegree; q++) {
-      // Initialize the current image moment to zero
-      mmt[p + (mmtDegree * q)] = 0;
-
-      // Compute the image moments taking the contributions from all the pixels
-      for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-          /** note: (q+p)th order in the dissertation but not here,
-           *  need to check later
-           */
-          mmt[p + (mmtDegree * q)] +=
-              pow(x, p + 1) * pow(y, q + 1) * imgIn[x + (w * y)];
-        }
-      }
-    }
-  }
-}
 
 // PixelCoords* pCoordsSigma
 void pTPSGPU(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams,

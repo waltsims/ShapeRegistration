@@ -25,8 +25,8 @@ void setPixelCoords(PixelCoords *pCoords, int w, int h) {
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       index = x + y * w;
-	  //bug fix was to switch indexes here.... works for now
-	  //TODO look for cause of this and repair in future!!!!
+      // bug fix was to switch indexes here.... works for now
+      // TODO look for cause of this and repair in future!!!!
       pCoords[index].x = (float)y;
       pCoords[index].y = (float)x;
     }
@@ -343,12 +343,11 @@ void objectiveFunction(float *observationImg, float *templateImg,
 
 // PixelCoords* pCoordsSigma
 void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
-
   int index;
   int dimSize = c_dim * c_dim;
   float Q;
 
- float freeDeformation[2] = {0, 0};
+  float freeDeformation[2] = {0, 0};
   // for every pixel location
   for (int x = 0; x < w; x++) {
     for (int y = 0; y < h; y++) {
@@ -373,8 +372,8 @@ void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
         }
       }
 
-		float tempPCoordsX = pCoords[index].x;
-		float tempPCoordsY = pCoords[index].y;
+      float tempPCoordsX = pCoords[index].x;
+      float tempPCoordsY = pCoords[index].y;
       // TODO this looks right but seems to be producing incorrect reuslts
       // at the boundaries..... see facebook discussion from sunday
       pCoords[index].x = (tpsParams.affineParam[0] * tempPCoordsX) +
@@ -396,7 +395,7 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
   float freeDeformation[2] = {0, 0};
 
   for (int x = 0; x < w; x++) {
-	for (int y = 0; y < h; y++) {
+    for (int y = 0; y < h; y++) {
 
       index = x + w * y;
 
@@ -422,29 +421,27 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
         }
 
         // note:: change
-		float tempQCoordsX = qCoords[index].x[qIndex];
-		float tempQCoordsY = qCoords[index].y[qIndex];
+        float tempQCoordsX = qCoords[index].x[qIndex];
+        float tempQCoordsY = qCoords[index].y[qIndex];
 
-        qCoords[index].x[qIndex] =
-            (tpsParams.affineParam[0] * tempQCoordsX) +
-            (tpsParams.affineParam[1] * tempQCoordsY) +
-            tpsParams.affineParam[2] + freeDeformation[0];
+        qCoords[index].x[qIndex] = (tpsParams.affineParam[0] * tempQCoordsX) +
+                                   (tpsParams.affineParam[1] * tempQCoordsY) +
+                                   tpsParams.affineParam[2] +
+                                   freeDeformation[0];
 
-        qCoords[index].y[qIndex] =
-            (tpsParams.affineParam[3] * tempQCoordsX) +
-            (tpsParams.affineParam[4] * tempQCoordsY) +
-            tpsParams.affineParam[5] + freeDeformation[1];
-	  }
-	}
+        qCoords[index].y[qIndex] = (tpsParams.affineParam[3] * tempQCoordsX) +
+                                   (tpsParams.affineParam[4] * tempQCoordsY) +
+                                   tpsParams.affineParam[5] +
+                                   freeDeformation[1];
+      }
+    }
   }
 }
 
-float radialApprox( float x, float y, float cx, float cy ) {
-
-  float r2 = (cx - x)*(cx - x) + (cy - y)*(cy - y);
+float radialApprox(float x, float y, float cx, float cy) {
+  float r2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
 
   return r2 < 0.0000000001 ? 0 : r2 * log(r2);
-
 }
 
 void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords,
@@ -530,7 +527,7 @@ void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_w,
         float ypolygon[4] = {qCoords[index].y[0], qCoords[index].y[1],
                              qCoords[index].y[2], qCoords[index].y[3]};
         // TODO create local index to search for neignboring points
-		// withing bounding box of polygon
+        // withing bounding box of polygon
         for (int y = 0; y < o_h; y++) {
           for (int x = 0; x < o_w; x++) {
             p_index = x + o_w * y;
@@ -555,7 +552,7 @@ bool pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
         (testX <
          (vertX[j] - vertX[i]) * (testY - vertY[i]) / (vertY[j] - vertY[i]) +
              vertX[i]))
-      c =! c;
+      c = !c;
   }
 
   return c;

@@ -14,7 +14,7 @@ if(CUDA_FOUND)
 
 	# Set the compilation flags for CUDA
 	set ( CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --std=c++11 --ptxas-options=-v --use_fast_math
-	--compiler-options -Wall -lopencvhighgui -lopencv_core -lavcodec)
+	--compiler-options -Wall -lopencvhighgui -lopencv_core -lavcodec -arch=sm_20)
 
 	# Include the lmfit from the 3rdparty directory (used for the Levenberg-Marquardt solver)
 	# It needs to be configured and built from source.
@@ -33,7 +33,7 @@ if(CUDA_FOUND)
 	file(GLOB lm 3rdparty/lmfit-6.1/lib/*.so)
 
 	# Specify the binary name and the source files to build
-	cuda_add_executable(sr src/main.cu src/helper.cu src/helper.h src/shapeRegistration.cu src/shapeRegistration.h src/testing.cu src/testing.h) 
+	cuda_add_executable(sr src/main.cu src/helper.cu src/helper.h src/shapeRegistration.cu src/shapeRegistration.h src/shapeRegistrationGPU.cu src/shapeRegistrationGPU.h src/testing.cu src/testing.h src/testingGPU.cu src/testingGPU.h) 
 	target_link_libraries(sr ${lm}  ${CUDA_LIBARIES} ${OpenCV_LIBS})
 
 else()

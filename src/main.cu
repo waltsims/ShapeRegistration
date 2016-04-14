@@ -9,8 +9,8 @@
 // ###
 
 #include "helper.h"
-#include "shapeRegistration.h"
-#include "testing.h"
+#include "shapeRegistrationGPU.h"
+#include "testingGPU.h"
 #include <iostream>
 #include <stdio.h>
 #include <cstring>
@@ -195,75 +195,10 @@ int main(int argc, char **argv) {
 
   convert_mat_to_layered(templateImg, templateIn);
   convert_mat_to_layered(observationImg, observationIn);
+
   Timer timer;
   timer.start();
-
-  // show input images
-  showImage("templateIn", templateIn, 100,
-            100);  // show at position (x_from_left=100,y_from_above=100)
-  showImage("observatinIn", observationIn, 300,
-            100);  // show at position (x_from_left=100,y_from_above=100)
-
-  float *resizedTemplate;
-  float *resizedObservation;
-  int rt_w;  // resized template width
-  int rt_h;  // resized template height
-  int ro_w;  // resized observation width
-  int ro_h;  // resized observation height
-
-  Margins observationMargins;
-  Margins templateMargins;
-
-  cutMargins(templateImg, t_w, t_h, resizedTemplate, rt_w, rt_h,
-             templateMargins);
-  cutMargins(observationImg, o_w, o_h, resizedObservation, ro_w, ro_h,
-             observationMargins);
-
-  cv::Mat resizedImgOut(ro_h, ro_w, CV_32FC1);  // mOut will be a grayscale image, 1 layer
-  float *resizedImOut = new float[ro_w * ro_h];
-  convert_layered_to_mat(resizedImgOut, resizedObservation);
-  showImage("observation with cut margins", resizedImgOut, 550, 100);
-
-  // we also need the center of mass for normailisation
-  float xCentTemplate;
-  float yCentTemplate;
-
-  //normalized quadCoords of Template
-  centerOfMass(resizedTemplate, rt_w, rt_h, xCentTemplate, yCentTemplate);
-  QuadCoords *qTemplate = new QuadCoords[rt_w * rt_h];
-  setQuadCoords(qTemplate, rt_w, rt_h);
-  qCoordsNormalization(rt_w, rt_h, qTemplate, xCentTemplate, yCentTemplate);
-  PixelCoords *pTemplate = new PixelCoords[rt_w * rt_h];
-  setPixelCoords(pTemplate, rt_w, rt_h);
-  pCoordsNormalisation(rt_w, rt_h, pTemplate, xCentTemplate, yCentTemplate);
-
-  // Time to transform the template
-  TPSParams tpsParams;
-
-  qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
-
-  PixelCoords *pResizedObservation = new PixelCoords[ro_w * ro_h];
-  setPixelCoords(pResizedObservation, ro_w, ro_h);
-
-
-  /*transfer(resizedTemplate, pResizedObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,*/
-           /*resizedImOut);*/
-
-
-  /*convert_layered_to_mat(resizedImgOut, resizedImOut);*/
-  /*showImage("Resized Output", resizedImgOut, 800, 100);*/
-  
-  float jacobi[rt_w * rt_h] ;
-  for ( int init = 0; init < rt_w * rt_h; init ++){
-
-	  jacobi[init] = 0;
-  
-  }
-  float residual[9 * 9] = { };
-
-  objectiveFunction(resizedImOut, resizedTemplate, jacobi, ro_w, ro_h,
-                    normFactor, tpsParams, qTemplate, pTemplate,
-                    pResizedObservation, rt_w, rt_h, residual);
+  testALLGPU(templateImg, templateIn, observationImg, observationIn, t_w, t_h, o_w, o_h, imgOut) ;
 
   //stop timer here
   timer.end();
@@ -278,11 +213,11 @@ int main(int argc, char **argv) {
   /*cv::imwrite("image_result.png", mOut * 255.f);*/
 
   // free allocated arrays
-  delete[] observationImg;
+/*  delete[] observationImg;
   delete[] templateImg;
 
   delete[] imgOut;
-  delete[] resizedImOut;
+  delete[] resizedImOut;*/
 
   // close all opencv windows
   cvDestroyAllWindows();

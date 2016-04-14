@@ -478,115 +478,165 @@ void qCoordsNormalizationGPU(int h_w, int h_h, QuadCoords *h_qCoords,
   CUDA_CHECK;
 }
 
+__device__ float radialApproxKernel(float d_x, float d_y, float d_cx, float d_cy) {
+  float d_r2 = (d_cx - d_x) * (d_cx - d_x) + (d_cy - d_y) * (d_cy - d_y);
+
+  return d_r2 < 0.0000000001 ? 0 : d_r2 * log(d_r2);
+}
+
 
 // PixelCoords* pCoordsSigma
-void pTPSGPU(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams,
-             int c_dim) {
+__global__ void pTPSGPUKernel(int d_w, int d_h, PixelCoords *d_pCoords,
+                              TPSParams d_tpsParams, int d_cDim) {
   int index;
-  int dimSize = c_dim * c_dim;
+
+  int x = threadIdx.x + blockDim.x * blockIdx.x;
+  int y = threadIdx.y + blockDim.y * blockIdx.y;
+
+  index = x + d_w * y;
+  int dimSize = d_cDim * d_cDim;
   float Q;
-
   float freeDeformation[2] = {0, 0};
-  // for every pixel location
-  for (int x = 0; x < w; x++) {
-    for (int y = 0; y < h; y++) {
-      index = x + w * y;
 
-      // for all c_m support coordinates
+  if (x < d_w && y < d_h) {
+    Q = 0;
+    freeDeformation[0] = 0;
+    freeDeformation[1] = 0;
+    // for all c_m support coordinates
+    for (int k = 0; k < dimSize; k++) {
+      // calculate radial approximation
+
+      Q = radialApproxKernel(d_pCoords[index].x,
+                             d_pCoords[index].y, d_tpsParams.ctrlP[k],
+                             d_tpsParams.ctrlP[k + dimSize]);
+
+      // multiply with weights
+      for (int i = 0; i < 2; i++) {
+        freeDeformation[i] += d_tpsParams.localCoeff[k + (i * dimSize)] * Q;
+      }
+    }
+
+    // note:: change
+    float tempQCoordsX = d_pCoords[index].x;
+    float tempQCoordsY = d_pCoords[index].y;
+
+    d_pCoords[index].x = (d_tpsParams.affineParam[0] * tempQCoordsX) +
+                                 (d_tpsParams.affineParam[1] * tempQCoordsY) +
+                                 d_tpsParams.affineParam[2] +
+                                 freeDeformation[0];
+
+    d_pCoords[index].y = (d_tpsParams.affineParam[3] * tempQCoordsX) +
+                                 (d_tpsParams.affineParam[4] * tempQCoordsY) +
+                                 d_tpsParams.affineParam[5] +
+                                 freeDeformation[1];
+  }
+}
+
+void pTPSGPU(int h_w, int h_h, PixelCoords *h_pCoords, TPSParams &h_tpsParams,
+             int h_cDim) {
+
+  dim3 block = dim3(128, 1, 1);
+  dim3 grid =
+      dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
+
+
+  PixelCoords *d_pCoords;
+  cudaMalloc(&d_pCoords, h_h * h_w * sizeof(PixelCoords));
+  CUDA_CHECK;
+
+  cudaMemcpy(d_pCoords, h_pCoords, h_h * h_w * sizeof(PixelCoords),
+             cudaMemcpyHostToDevice);
+  CUDA_CHECK;
+
+  pTPSGPUKernel<<<grid, block>>>(h_w, h_h, d_pCoords, h_tpsParams, h_cDim);
+  CUDA_CHECK;
+
+  cudaMemcpy(h_pCoords, d_pCoords, h_h * h_w * sizeof(PixelCoords),
+             cudaMemcpyDeviceToHost);
+  CUDA_CHECK;
+
+  cudaFree(d_pCoords);
+  CUDA_CHECK;
+}
+
+
+__global__ void qTPSGPUKernel(int d_w, int d_h, QuadCoords *d_qCoords,
+                              TPSParams d_tpsParams, int d_cDim) {
+  int index;
+
+  int x = threadIdx.x + blockDim.x * blockIdx.x;
+  int y = threadIdx.y + blockDim.y * blockIdx.y;
+
+  index = x + d_w * y;
+  int dimSize = d_cDim * d_cDim;
+  float Q;
+  float freeDeformation[2] = {0, 0};
+
+  if (x < d_w && y < d_h) {
+    for (int qIndex = 0; qIndex < 4; qIndex++) {
+      Q = 0;
       freeDeformation[0] = 0;
       freeDeformation[1] = 0;
+      // for all c_m support coordinates
       for (int k = 0; k < dimSize; k++) {
         // calculate radial approximation
-        Q = radialApproxGPU(pCoords[index].x, pCoords[index].y,
-                            tpsParams.ctrlP[k], tpsParams.ctrlP[k + dimSize]);
 
-        /**   (a_i1 *x_1)  + (a_i2 *x_2) + a_i3
-         *  = (scale*x_1)  + (sheer*x_2) + translation
-         *  = (        rotation        ) + translation
-         */
+        Q = radialApproxKernel(d_qCoords[index].x[qIndex],
+                               d_qCoords[index].y[qIndex], d_tpsParams.ctrlP[k],
+                               d_tpsParams.ctrlP[k + dimSize]);
 
         // multiply with weights
         for (int i = 0; i < 2; i++) {
-          freeDeformation[i] += tpsParams.localCoeff[k + i * dimSize] * Q;
+          freeDeformation[i] += d_tpsParams.localCoeff[k + (i * dimSize)] * Q;
         }
       }
 
-      float tempPCoordsX = pCoords[index].x;
-      float tempPCoordsY = pCoords[index].y;
-      // TODO this looks right but seems to be producing incorrect reuslts
-      // at the boundaries..... see facebook discussion from sunday
-      pCoords[index].x = (tpsParams.affineParam[0] * tempPCoordsX) +
-                         (tpsParams.affineParam[1] * tempPCoordsY) +
-                         tpsParams.affineParam[2] + freeDeformation[0];
+      // note:: change
+      float tempQCoordsX = d_qCoords[index].x[qIndex];
+      float tempQCoordsY = d_qCoords[index].y[qIndex];
 
-      pCoords[index].y = (tpsParams.affineParam[3] * tempPCoordsX) +
-                         (tpsParams.affineParam[4] * tempPCoordsY) +
-                         tpsParams.affineParam[5] + freeDeformation[1];
-    }
-  }
-}
-
-void qTPSGPU(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
-             int c_dim) {
-  int index;
-  int dimSize = c_dim * c_dim;
-  float Q;
-  float freeDeformation[2] = {0, 0};
-
-  for (int x = 0; x < w; x++) {
-    for (int y = 0; y < h; y++) {
-      /*int x = w / 2, y = h / 2;*/
-
-      index = x + w * y;
-
-      for (int qIndex = 0; qIndex < 4; qIndex++) {
-        Q = 0;
-        freeDeformation[0] = 0;
-        freeDeformation[1] = 0;
-        // for all c_m support coordinates
-        for (int k = 0; k < dimSize; k++) {
-          // calculate radial approximation
-          Q = radialApproxGPU(qCoords[index].x[qIndex],
-                              qCoords[index].y[qIndex], tpsParams.ctrlP[k],
-                              tpsParams.ctrlP[k + dimSize]);
-
-          /*          printf ("Q: %lf\n", Q);*/
-          /**   (a_i1 *x_1)  + (a_i2 *x_2) + a_i3
-           *  = (scale*x_1)  + (sheer*x_2) + translation
-           *  = (        rotation        ) + translation
-           */
-
-          // multiply with weights
-          for (int i = 0; i < 2; i++) {
-            freeDeformation[i] += tpsParams.localCoeff[k + (i * dimSize)] * Q;
-          }
-        }
-        /*
-                printf("---------------------------------\n");
-                printf ("freeDef[0]: %lf, freeDef[1]: %lf\n",
-           freeDeformation[0], freeDeformation[1]);
-                printf("---------------------------------\n");
-                */
-
-        // note:: change
-        float tempQCoordsX = qCoords[index].x[qIndex];
-        float tempQCoordsY = qCoords[index].y[qIndex];
-
-        qCoords[index].x[qIndex] = (tpsParams.affineParam[0] * tempQCoordsX) +
-                                   (tpsParams.affineParam[1] * tempQCoordsY) +
-                                   tpsParams.affineParam[2] +
+      d_qCoords[index].x[qIndex] = (d_tpsParams.affineParam[0] * tempQCoordsX) +
+                                   (d_tpsParams.affineParam[1] * tempQCoordsY) +
+                                   d_tpsParams.affineParam[2] +
                                    freeDeformation[0];
 
-        qCoords[index].y[qIndex] = (tpsParams.affineParam[3] * tempQCoordsX) +
-                                   (tpsParams.affineParam[4] * tempQCoordsY) +
-                                   tpsParams.affineParam[5] +
-                                   freeDeformation[1];
-      }
+      d_qCoords[index].y[qIndex] = (d_tpsParams.affineParam[3] * tempQCoordsX) +
+                                 (d_tpsParams.affineParam[4] * tempQCoordsY) +
+                                 d_tpsParams.affineParam[5] + freeDeformation[1];
     }
   }
 }
 
+void qTPSGPU(int h_w, int h_h, QuadCoords *h_qCoords, TPSParams &h_tpsParams,
+             int h_cDim) {
+
+  dim3 block = dim3(128, 1, 1);
+  dim3 grid =
+      dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
+
+
+  QuadCoords *d_qCoords;
+  cudaMalloc(&d_qCoords, h_h * h_w * sizeof(QuadCoords));
+  CUDA_CHECK;
+
+  cudaMemcpy(d_qCoords, h_qCoords, h_h * h_w * sizeof(QuadCoords),
+             cudaMemcpyHostToDevice);
+  CUDA_CHECK;
+
+  qTPSGPUKernel<<<grid, block>>>(h_w, h_h, d_qCoords, h_tpsParams, h_cDim);
+  CUDA_CHECK;
+
+  cudaMemcpy(h_qCoords, d_qCoords, h_h * h_w * sizeof(QuadCoords),
+             cudaMemcpyDeviceToHost);
+  CUDA_CHECK;
+
+  cudaFree(d_qCoords);
+  CUDA_CHECK;
+}
+
+
 float radialApproxGPU(float x, float y, float cx, float cy) {
+	//TODO delete if only device function needed
   float r2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
 
   return r2 < 0.0000000001 ? 0 : r2 * log(r2);

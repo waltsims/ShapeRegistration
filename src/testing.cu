@@ -141,9 +141,9 @@
     printf("--------------------------------------------------\n\n");
     // end of test: setQuadCoords() before normalization.
 
-    // Test: pCoordsNormalization() [OK]
-    printf("---Testing the pCoordsNormalization()-------------\n");
-    pCoordsNormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+    // Test: pCoordsNormalisation() [OK]
+    printf("---Testing the pCoordsNormalisation()-------------\n");
+    pCoordsNormalisation(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
     printf("pCoords[0].x = %f\n", pCoords[0].x);
     printf("pCoords[0].y = %f\n", pCoords[0].y);
     printf("pCoords[last].x = %f\n", pCoords[lastIndex].x);
@@ -181,7 +181,7 @@
         minPCoordX, minPCoordXInd, maxPCoordX, maxPCoordXInd, minPCoordY,
         minPCoordYInd, maxPCoordY, maxPCoordYInd);
     printf("--------------------------------------------------\n\n");
-    // end of test: pCoordsNormalization().
+    // end of test: pCoordsNormalisation().
 
     // Test: qCoordsNormalization() [OK]
     printf("---Testing the qCoordsNormalization()-------------\n");

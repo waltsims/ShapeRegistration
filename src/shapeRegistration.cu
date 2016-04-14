@@ -16,87 +16,6 @@
 #include "shapeRegistration.h"
 #include <stdio.h>
 
-double  normFactor[81] = {1.5707963267949,
-					  0.471404520791033,
-					  0.196349540849362,
-					  0.0942809041582067,
-					  0.0490873852123405,
-					  0.026937401188059,
-					  0.0153398078788564,
-					  0.00897913372935302,          
-					  0.00536893275759974,
-					  0.471404520791033,
-					  0.125,
-					  0.0471404520791033,
-					  0.0208333333333333,
-					  0.0101015254455221,
-					  0.00520833333333333,
-					  0.00280597929042281,          
-					  0.0015625,
-					  0.00089281159240726,
-					  0.196349540849362,
-					  0.0471404520791033,
-					  0.0163624617374468,
-					  0.00673435029701476,
-					  0.00306796157577128,
-					  0.00149652228822551,          
-					  0.00076699039394282,
-					  0.000408142442243319,
-					  0.000223705531566656,
-					  0.0942809041582067,
-					  0.0208333333333333,
-					  0.00673435029701476,
-					  0.00260416666666667,
-					  0.00112239171616913,          
-					  0.000520833333333333,
-					  0.000255089026402074,
-					  0.000130208333333333,
-					  0.0000686778148005585,
-					  0.0490873852123405,
-					  0.0101015254455221,
-					  0.00306796157577128,
-					  0.00112239171616913,          
-					  0.000460194236365692,
-					  0.000204071221121659,
-					  0.0000958737992428525,
-					  0.000047093358720383,
-					  0.0000239684498107131,
-					  0.0269374011880590,
-					  0.00520833333333333,
-					  0.00149652228822551,          
-					  0.000520833333333333,
-					  0.000204071221121659,
-					  0.0000868055555555556,
-					  0.0000392444656003192,
-					  0.0000186011904761905,
-					  0.0000091570419734078,
-					  0.0153398078788564,
-					  0.00280597929042281,          
-					  0.00076699039394282,
-					  0.000255089026402074,
-					  0.0000958737992428525,
-					  0.0000392444656003192,
-					  0.0000171203212933665,
-					  0.00000784889312006383,
-					  0.00000374507028292392,
-					  0.00897913372935302,
-					  0.0015625,
-					  0.000408142442243319,
-					  0.000130208333333333,
-					  0.0000470933587203830,
-					  0.0000186011904761905,
-					  0.00000784889312006383,
-					  0.00000348772321428571,
-					  0.00000161594858354255,          
-					  0.00536893275759974,
-					  0.00089281159240726,
-					  0.000223705531566656,
-					  0.0000686778148005585,
-					  0.0000239684498107131,
-					  0.0000091570419734078,
-					  0.00000374507028292392,
-					  0.00000161594858354255,
-					  0.000000728208110568542};
 
 void setPixelCoords(PixelCoords *pCoords, int w, int h) {
   // Index in the image array with sizes w,h.
@@ -260,7 +179,7 @@ void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
 }
 
 // TODO maybe should be called normalize
-void pCoordsNormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
+void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
                           float yCentCoord) {
   // Scaling factors per x,y (1/sx, 1/sy in the Matlab implementation)
   float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
@@ -342,6 +261,7 @@ void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
   for (int q = 0; q < mmtDegree; q++) {
     for (int p = 0; p < mmtDegree; p++) {
       int mmtIndex = p + q * mmtDegree;
+	  //cout << "first for set: " << p << " " << q << endl;
 
       // Compute the image moments taking the contributions from all the pixels
       for (int y = 0; y < h; y++) {
@@ -359,21 +279,25 @@ void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
   }
 }
 
-void objectiveFuncition(float *observationImg, float *templateImg,
+void objectiveFunction(float *observationImg, float *templateImg,
                         float *jacobi, int ro_w, int ro_h,
                         double *normalisation, TPSParams &tpsParams,
                         QuadCoords *qTemplate, PixelCoords *pTemplate,
                         PixelCoords *pObservation, int rt_w, int rt_h,
                         float *residual) {
   int momentDeg = 9;
-  float observationMoment[momentDeg * momentDeg * ro_w * ro_h];
-  float templateMoment[momentDeg * momentDeg * rt_w * rt_h];
+
+  float * observationMoment = new float[momentDeg * momentDeg * ro_w * ro_h];
+  float * templateMoment= new float[momentDeg * momentDeg * rt_w * rt_h];
   
+
   float sumTempMoment[momentDeg * momentDeg] ;
   float sumObsMoment[momentDeg * momentDeg] ;
-  cout << sumTempMoment[0]<< endl;
+  for ( int init = 0; init < momentDeg * momentDeg; init ++){
+	  sumObsMoment[init] =(float)0;
+	  sumTempMoment[init] = (float)0;
+  }
 
-  residual = 0;
 
   // calculate tps transformation of template
 
@@ -384,7 +308,7 @@ void objectiveFuncition(float *observationImg, float *templateImg,
 
   // get moments of TPS transformation of template
   imageMoment(observationImg, pObservation, ro_w, ro_h, observationMoment,
-              momentDeg);
+			  momentDeg);
 
   imageMoment(templateImg, pTemplate, rt_w, rt_h, templateMoment, momentDeg);
 
@@ -396,21 +320,25 @@ void objectiveFuncition(float *observationImg, float *templateImg,
     for (int y = 0; y < rt_h; y++) {
       for (int x = 0; x < rt_w; x++) {
         sumTempMoment[index] +=
-            templateMoment[index * (rt_h * rt_w) + (x + rt_h * y)] *
-            jacobi[x + rt_h * y];
+            templateMoment[index * (rt_h * rt_w) + (x + rt_w * y)] *
+            jacobi[x + rt_w * y];
       }
     }
 
     for (int y = 0; y < ro_h; y++) {
       for (int x = 0; x < ro_w; x++) {
         sumObsMoment[index] +=
-            observationMoment[index * (ro_h * ro_w) + (x + ro_h * y)];
+            observationMoment[index * (ro_h * ro_w) + (x + ro_w * y)];
       }
     }
 
-    residual[index] +=
+    residual[index] =
         (sumObsMoment[index] - sumTempMoment[index]) / normalisation[index];
+	
+
   }
+  delete[] observationMoment;
+  delete[] templateMoment;
 };
 
 // PixelCoords* pCoordsSigma

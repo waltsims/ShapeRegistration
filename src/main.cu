@@ -16,6 +16,88 @@
 #include <cstring>
 
 #define DIM_C_REF 5
+
+double  normFactor[81] = {1.5707963267949,
+					  0.471404520791033,
+					  0.196349540849362,
+					  0.0942809041582067,
+					  0.0490873852123405,
+					  0.026937401188059,
+					  0.0153398078788564,
+					  0.00897913372935302,          
+					  0.00536893275759974,
+					  0.471404520791033,
+					  0.125,
+					  0.0471404520791033,
+					  0.0208333333333333,
+					  0.0101015254455221,
+					  0.00520833333333333,
+					  0.00280597929042281,          
+					  0.0015625,
+					  0.00089281159240726,
+					  0.196349540849362,
+					  0.0471404520791033,
+					  0.0163624617374468,
+					  0.00673435029701476,
+					  0.00306796157577128,
+					  0.00149652228822551,          
+					  0.00076699039394282,
+					  0.000408142442243319,
+					  0.000223705531566656,
+					  0.0942809041582067,
+					  0.0208333333333333,
+					  0.00673435029701476,
+					  0.00260416666666667,
+					  0.00112239171616913,          
+					  0.000520833333333333,
+					  0.000255089026402074,
+					  0.000130208333333333,
+					  0.0000686778148005585,
+					  0.0490873852123405,
+					  0.0101015254455221,
+					  0.00306796157577128,
+					  0.00112239171616913,          
+					  0.000460194236365692,
+					  0.000204071221121659,
+					  0.0000958737992428525,
+					  0.000047093358720383,
+					  0.0000239684498107131,
+					  0.0269374011880590,
+					  0.00520833333333333,
+					  0.00149652228822551,          
+					  0.000520833333333333,
+					  0.000204071221121659,
+					  0.0000868055555555556,
+					  0.0000392444656003192,
+					  0.0000186011904761905,
+					  0.0000091570419734078,
+					  0.0153398078788564,
+					  0.00280597929042281,          
+					  0.00076699039394282,
+					  0.000255089026402074,
+					  0.0000958737992428525,
+					  0.0000392444656003192,
+					  0.0000171203212933665,
+					  0.00000784889312006383,
+					  0.00000374507028292392,
+					  0.00897913372935302,
+					  0.0015625,
+					  0.000408142442243319,
+					  0.000130208333333333,
+					  0.0000470933587203830,
+					  0.0000186011904761905,
+					  0.00000784889312006383,
+					  0.00000348772321428571,
+					  0.00000161594858354255,          
+					  0.00536893275759974,
+					  0.00089281159240726,
+					  0.000223705531566656,
+					  0.0000686778148005585,
+					  0.0000239684498107131,
+					  0.0000091570419734078,
+					  0.00000374507028292392,
+					  0.00000161594858354255,
+					  0.000000728208110568542};
 using namespace std;
 
 int main(int argc, char **argv) {
@@ -151,22 +233,37 @@ int main(int argc, char **argv) {
   QuadCoords *qTemplate = new QuadCoords[rt_w * rt_h];
   setQuadCoords(qTemplate, rt_w, rt_h);
   qCoordsNormalization(rt_w, rt_h, qTemplate, xCentTemplate, yCentTemplate);
+  PixelCoords *pTemplate = new PixelCoords[rt_w * rt_h];
+  setPixelCoords(pTemplate, rt_w, rt_h);
+  pCoordsNormalisation(rt_w, rt_h, pTemplate, xCentTemplate, yCentTemplate);
 
   // Time to transform the template
   TPSParams tpsParams;
 
   qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
 
-  PixelCoords *pResizedObservation = new PixelCoords[ro_w * o_h];
+  PixelCoords *pResizedObservation = new PixelCoords[ro_w * ro_h];
   setPixelCoords(pResizedObservation, ro_w, ro_h);
 
 
-  transfer(resizedTemplate, pResizedObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,
-           resizedImOut);
+  /*transfer(resizedTemplate, pResizedObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,*/
+           /*resizedImOut);*/
 
 
-  convert_layered_to_mat(resizedImgOut, resizedImOut);
-  showImage("Resized Output", resizedImgOut, 800, 100);
+  /*convert_layered_to_mat(resizedImgOut, resizedImOut);*/
+  /*showImage("Resized Output", resizedImgOut, 800, 100);*/
+  
+  float jacobi[rt_w * rt_h] ;
+  for ( int init = 0; init < rt_w * rt_h; init ++){
+
+	  jacobi[init] = 0;
+  
+  }
+  float residual[9 * 9] = { };
+
+  objectiveFunction(resizedImOut, resizedTemplate, jacobi, ro_w, ro_h,
+                    normFactor, tpsParams, qTemplate, pTemplate,
+                    pResizedObservation, rt_w, rt_h, residual);
 
   //stop timer here
   timer.end();
@@ -175,7 +272,6 @@ int main(int argc, char **argv) {
 
   // wait for key inputs
   cv::waitKey(0);
-
   // save input and result
   /*cv::imwrite("image_input.png",*/
   /*mIn * 255.f);  // "imwrite" assumes channel range [0,255]*/

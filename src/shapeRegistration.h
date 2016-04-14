@@ -241,7 +241,7 @@ void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
  *
  *  \return nothing
  */
-void pCoordsNormalization(int w, int h, PixelCoords *pCoords, float xCentCoord,
+void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
                           float yCentCoord);
 
 /** normalize the quad coordinates for each pixel
@@ -284,12 +284,12 @@ void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree);
 /** objective function for LM solver
  *
  */
-void objectiveFuncition(float *observationImg, float *templateImg,
+void objectiveFunction(float *observationImg, float *templateImg,
                         float *jacobi, int ro_w, int ro_h,
                         double *normalization, TPSParams &tpsParams,
                         QuadCoords *qTemplate, PixelCoords *pTemplate,
                         PixelCoords *pObservation, int rt_w, int rt_h,
-                        float *residual, float *normalisation);
+                        float *residual);
 /** thin plate spline for pixel coordinates
  *  \param[in] imgIn           input image
  *  \param[in] w               width of the image

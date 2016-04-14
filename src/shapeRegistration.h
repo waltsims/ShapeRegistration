@@ -17,6 +17,7 @@
 #define SHAPEREGISTRATION_H
 
 #include "helper.h"
+#include "lmmin.h"
 
 #include <opencv2/opencv.hpp>
 #include <vector>
@@ -280,6 +281,13 @@ void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
  * moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
  */
 void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree);
+
+/** wrapper for the objective function for the lmmin()
+ *  The signature is in the form that lmmin expects.
+ *  See http://apps.jcns.fz-juelich.de/man/lmmin.html
+ *  as well as the example 3rdparty/lmfit-6.1/demo/nonlin1.c
+ */
+void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data, double *fvec, int *userbreak);
 
 /** objective function for LM solver
  *

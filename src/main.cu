@@ -10,6 +10,7 @@
 
 #include "helper.h"
 #include "shapeRegistration.h"
+#include "lmmin.h"
 #include "testing.h"
 #include <iostream>
 #include <stdio.h>
@@ -24,7 +25,7 @@ double  normFactor[81] = {1.5707963267949,
 					  0.0490873852123405,
 					  0.026937401188059,
 					  0.0153398078788564,
-					  0.00897913372935302,          
+					  0.00897913372935302,
 					  0.00536893275759974,
 					  0.471404520791033,
 					  0.125,
@@ -32,7 +33,7 @@ double  normFactor[81] = {1.5707963267949,
 					  0.0208333333333333,
 					  0.0101015254455221,
 					  0.00520833333333333,
-					  0.00280597929042281,          
+					  0.00280597929042281,
 					  0.0015625,
 					  0.00089281159240726,
 					  0.196349540849362,
@@ -40,7 +41,7 @@ double  normFactor[81] = {1.5707963267949,
 					  0.0163624617374468,
 					  0.00673435029701476,
 					  0.00306796157577128,
-					  0.00149652228822551,          
+					  0.00149652228822551,
 					  0.00076699039394282,
 					  0.000408142442243319,
 					  0.000223705531566656,
@@ -48,7 +49,7 @@ double  normFactor[81] = {1.5707963267949,
 					  0.0208333333333333,
 					  0.00673435029701476,
 					  0.00260416666666667,
-					  0.00112239171616913,          
+					  0.00112239171616913,
 					  0.000520833333333333,
 					  0.000255089026402074,
 					  0.000130208333333333,
@@ -56,7 +57,7 @@ double  normFactor[81] = {1.5707963267949,
 					  0.0490873852123405,
 					  0.0101015254455221,
 					  0.00306796157577128,
-					  0.00112239171616913,          
+					  0.00112239171616913,
 					  0.000460194236365692,
 					  0.000204071221121659,
 					  0.0000958737992428525,
@@ -64,7 +65,7 @@ double  normFactor[81] = {1.5707963267949,
 					  0.0000239684498107131,
 					  0.0269374011880590,
 					  0.00520833333333333,
-					  0.00149652228822551,          
+					  0.00149652228822551,
 					  0.000520833333333333,
 					  0.000204071221121659,
 					  0.0000868055555555556,
@@ -72,7 +73,7 @@ double  normFactor[81] = {1.5707963267949,
 					  0.0000186011904761905,
 					  0.0000091570419734078,
 					  0.0153398078788564,
-					  0.00280597929042281,          
+					  0.00280597929042281,
 					  0.00076699039394282,
 					  0.000255089026402074,
 					  0.0000958737992428525,
@@ -88,7 +89,7 @@ double  normFactor[81] = {1.5707963267949,
 					  0.0000186011904761905,
 					  0.00000784889312006383,
 					  0.00000348772321428571,
-					  0.00000161594858354255,          
+					  0.00000161594858354255,
 					  0.00536893275759974,
 					  0.00089281159240726,
 					  0.000223705531566656,
@@ -252,19 +253,123 @@ int main(int argc, char **argv) {
 
   /*convert_layered_to_mat(resizedImgOut, resizedImOut);*/
   /*showImage("Resized Output", resizedImgOut, 800, 100);*/
-  
+
   float jacobi[rt_w * rt_h] ;
   for ( int init = 0; init < rt_w * rt_h; init ++){
 
 	  jacobi[init] = 0;
-  
+
   }
   float residual[9 * 9] = { };
+
 
   objectiveFunction(resizedImOut, resizedTemplate, jacobi, ro_w, ro_h,
                     normFactor, tpsParams, qTemplate, pTemplate,
                     pResizedObservation, rt_w, rt_h, residual);
+/**
+	// Pack the parameters for the lmmin() objective function
+	int sizePar = 6 + (2 * DIM_C_REF * DIM_C_REF);
+	double *par = new double[sizePar];
+	// Pack the affineParam
+	for (int i = 0; i < 6; i++) {
+		par[i] = tpsParams.affineParam[i];
+	}
+	// Pack the localCoeff
+	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
+		par[i+6] = tpsParams.localCoeff[i];
+	}
 
+	// Pack the auxiliary data for the lmmin() objective function
+	// Data format (all floats) [number of elements, name]:
+	// 1,               rt_w
+	// 1,               rt_h
+	// 1,               ro_w
+	// 1,               ro_h
+	// rt_w * rt_h,     templateImg
+	// ro_w * ro_h,     observationImg
+	// 81,              normalization TODO: Change it to include the extra 6 eq.
+	// 2 * rt_w * rt_h, pTemplate
+	// 8 * rt_w * rt_h, qTemplate
+	// 2 * rt_w * rt_h, pObservation
+	// rt_w * rt_h,     jacobi
+
+	int sizeData = (4) + (rt_w * rt_h) + (ro_w * ro_h) + (81) + (2 * rt_w * rt_h)
+							 + (8 * rt_w * rt_h) + (2 * rt_w * rt_h) + (rt_w * rt_h);
+	float *data = new float[sizeData];
+	// current writing position in the data array
+	int offset = 0;
+
+	// Pack the sizes of the arrays
+	data[offset    ] = rt_w;
+	data[offset + 1] = rt_h;
+	data[offset + 2] = ro_w;
+	data[offset + 3] = ro_h;
+	// We wrote 4 elements, move the reading position 4 places
+	offset += 4;
+
+  // Template image array
+	for (int i = 0; i < rt_w * rt_h; i++) {
+		data[offset + i] = resizedTemplate[i];
+	}
+	offset += rt_w * rt_h;
+
+	// Observation image array
+	for (int i = 0; i < ro_w * ro_h; i++) {
+		data[offset + i] = resizedImOut[i];
+	}
+	offset += ro_w * ro_h;
+
+	// Normalization factors (N_i for eq.22)
+	for (int i = 0; i < 81; i++) {
+		data[offset + i] = normFactor[i];
+	}
+	offset += 81;
+
+	// Pixel coordinates of the template
+	// Every element is a struct with two fields: x, y
+	for (int i = 0; i < rt_w * rt_h; i++) {
+		data[offset + 2*i]   = pTemplate[i].x;
+		data[offset + 2*i+1] = pTemplate[i].y;
+	}
+	offset += 2 * rt_w * rt_h;
+
+	// Quad coordinates of the template
+	// Every element has two fields (x,y) that are arrays of four elements (corners)
+	for (int i = 0; i < rt_w * rt_h; i++) {
+		data[offset + 8*i  ] = qTemplate[i].x[0];
+		data[offset + 8*i+1] = qTemplate[i].y[0];
+		data[offset + 8*i+2] = qTemplate[i].x[1];
+		data[offset + 8*i+3] = qTemplate[i].y[1];
+		data[offset + 8*i+4] = qTemplate[i].x[2];
+		data[offset + 8*i+5] = qTemplate[i].y[2];
+		data[offset + 8*i+6] = qTemplate[i].x[3];
+		data[offset + 8*i+7] = qTemplate[i].y[3];
+	}
+	offset += 8 * rt_w * rt_h;
+
+	// Pixel coordinates of the observation
+  // Every element is a struct with two fields: x, y
+  for (int i = 0; i < ro_w * ro_h; i++) {
+    data[offset + 2*i]   = pResizedObservation[i].x;
+    data[offset + 2*i+1] = pResizedObservation[i].y;
+  }
+  offset += 2 * ro_w * ro_h;
+
+	// Jacobi determinants
+	for (int i = 0; i < rt_w * rt_h; i++) {
+		data[offset + i] = jacobi[i];
+	}
+	offset += rt_w * rt_h;
+
+	// Configuration parameters for the lmmin()
+	// Number of equations
+	int m_dat = 81; // TODO: add the 6 extra equations
+	lm_control_struct control = lm_control_float;
+	lm_status_struct status;
+
+	// Call the lmmin() using the wrapper for the objective function
+	// lmmin( sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status );
+*/
   //stop timer here
   timer.end();
   float t = timer.get();  // elapsed time in seconds

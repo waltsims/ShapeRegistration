@@ -279,6 +279,125 @@ void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
   }
 }
 
+void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data, double *fvec, int *userbreak) {
+
+	// The affineParam and the localCoeff are our free variables ("parameters") and
+	// need to be packed in an array in order to use the lmmin(). We pass
+	// them as *par, but our functions are implemented to use the TPSParams
+	// structure. We do the unpacking here.
+	TPSParams tpsParams;
+
+	for (int i = 0; i < 6; i++) {
+		tpsParams.affineParam[i] = par[i];
+	}
+
+	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
+		tpsParams.localCoeff[i] = par[i+6];
+	}
+
+  // Cast the void pointer data to a float pointer dataF
+  // void *dataF = data;
+  // void *dataF = data;
+  // float *dataF = reinterpret_cast<float*>(data);
+  const float *dataF = static_cast<const float *>(data);
+
+	// We also need to pack/unpack the non-free parameters ("data") of the objective function
+  // current reading position in the data array
+	int offset = 0;
+
+  // Read first the sizes needed to allocate the included arrays
+  // int rt_w = static_cast<int>(data[offset]);
+	int rt_w = dataF[offset    ];
+	int rt_h = dataF[offset + 1];
+	int ro_w = dataF[offset + 2];
+	int ro_h = dataF[offset + 3];
+  // We read 4 elements, move the reading position 4 places
+	offset += 4;
+
+  // Template image array
+	float *templateImg = new float[rt_w * rt_h];
+	for (int i = 0; i < rt_w * rt_h; i++) {
+		templateImg[i] = dataF[offset + i];
+	}
+	offset += rt_w * rt_h;
+
+  // Observation image array
+	float *observationImg = new float[ro_w * ro_h];
+	for (int i = 0; i < ro_w * ro_h; i++) {
+		observationImg[i] = dataF[offset + i];
+	}
+	offset += ro_w * ro_h;
+
+  // Normalization factors (N_i for eq.22)
+  double normalization[81]; // TODO: Make this double everywhere
+  for (int i = 0; i < 81; i++) {
+    normalization[i] = dataF[offset + i];
+  }
+  offset += 81;
+
+  // Pixel coordinates of the template
+  // Every element is a struct with two fields: x, y
+  PixelCoords *pTemplate = new PixelCoords[rt_w * rt_h];
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    pTemplate[i].x = dataF[offset + 2*i];
+    pTemplate[i].y = dataF[offset + 2*i+1];
+  }
+  offset += 2 * rt_w * rt_h;
+
+  // Quad coordinates of the template
+  // Every element has two fields (x,y) that are arrays of four elements (corners)
+  QuadCoords *qTemplate = new QuadCoords[rt_w * rt_h];
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    qTemplate[i].x[0] = dataF[offset + 8*i  ];
+    qTemplate[i].y[0] = dataF[offset + 8*i+1];
+    qTemplate[i].x[1] = dataF[offset + 8*i+2];
+    qTemplate[i].y[1] = dataF[offset + 8*i+3];
+    qTemplate[i].x[2] = dataF[offset + 8*i+4];
+    qTemplate[i].y[2] = dataF[offset + 8*i+5];
+    qTemplate[i].x[3] = dataF[offset + 8*i+6];
+    qTemplate[i].y[3] = dataF[offset + 8*i+7];
+  }
+  offset += 8 * rt_w * rt_h;
+
+  // Pixel coordinates of the observation
+  // Every element is a struct with two fields: x, y
+  PixelCoords *pObservation = new PixelCoords[ro_w * ro_h];
+  for (int i = 0; i < ro_w * ro_h; i++) {
+    pObservation[i].x = dataF[offset + 2*i];
+    pObservation[i].y = dataF[offset + 2*i+1];
+  }
+  offset += 2 * ro_w * ro_h;
+
+  // Jacobi determinants
+  float *jacobi = new float[rt_w * rt_h];
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    jacobi[i] = dataF[offset + i];
+  }
+  offset += rt_w * rt_h;
+
+  // Array of the residuals of the equations
+  // TODO: Add also the 6 extra equations!
+  float residual[9 * 9] = { };
+  for (int i = 0; i < 9 * 9; i++) {
+    residual[i] = fvec[i];
+  }
+
+  // Call the objective function with the unpacked arguments
+  objectiveFunction(observationImg, templateImg, jacobi, ro_w, ro_h,
+                    normalization, tpsParams, qTemplate, pTemplate,
+                    pObservation, rt_w, rt_h, residual);
+
+  // Delete the allocated pointers
+  delete templateImg;
+  delete observationImg;
+  delete pTemplate;
+  delete qTemplate;
+  delete jacobi;
+
+  return;
+}
+
+
 void objectiveFunction(float *observationImg, float *templateImg,
                         float *jacobi, int ro_w, int ro_h,
                         double *normalisation, TPSParams &tpsParams,
@@ -289,7 +408,7 @@ void objectiveFunction(float *observationImg, float *templateImg,
 
   float * observationMoment = new float[momentDeg * momentDeg * ro_w * ro_h];
   float * templateMoment= new float[momentDeg * momentDeg * rt_w * rt_h];
-  
+
 
   float sumTempMoment[momentDeg * momentDeg] ;
   float sumObsMoment[momentDeg * momentDeg] ;
@@ -334,7 +453,7 @@ void objectiveFunction(float *observationImg, float *templateImg,
 
     residual[index] =
         (sumObsMoment[index] - sumTempMoment[index]) / normalisation[index];
-	
+
 
   }
   delete[] observationMoment;
@@ -561,4 +680,3 @@ bool pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
   return c;
 
 }
-

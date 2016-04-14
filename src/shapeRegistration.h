@@ -279,7 +279,7 @@ void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
  *  \note pseudo code of geometric
  * moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
  */
-void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree);
+void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt, int mmtDegree);
 
 /** objective function for LM solver
  *

@@ -20,6 +20,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <vector>
+#include "shapeRegistration.h"
 
 #define BACKGROUND 0
 #define FOREGROUND 1
@@ -33,107 +34,6 @@ using namespace cv;
  *
  *  \note all the values are given from tps.mat
  *
- */
-struct TPSParams {
-  /** affine parameters: a
-   *  size: 2 X 3
-   */
-  float affineParam[2 * 3] = {180.750570973114, -16.6979777565757,
-                              78.2371003511860, 26.8971153700975,
-                              230.948397768629, 94.8716771317028};
-  /** local coefficient: w
-   *  size: 2 X degree of moment^2
-   */
-  float localCoeff[2 * DIM_C_REF * DIM_C_REF] = {
-      43.4336100367918,  -254.664478125986, 164.260796260200,
-      209.676277829085,  -95.4890564425583, 74.0543824971685,
-      -28.7045465000123, 24.3081842513946,  12.0776119309275,
-      -110.537185437210, -31.4277765118847, -12.6475496029205,
-      -6.28490818780619, -17.9631170829272, -49.2124002833565,
-      4.55138433535774,  -17.8818978065982, 9.33577702465229,
-      -6.71131995853042, 63.3149271119866,  11.6553014436196,
-      -96.3055081066777, 159.231246073828,  -77.2364773866945,
-      29.1667360924734,  -114.139336032721, 137.564797025932,
-      9.98432048986034,  -79.6383549015170, -40.5321424871105,
-      -170.186873110339, -6.97667497242567, 5.22216368408785,
-      3.13977210362321,  113.586062434194,  238.165062497888,
-      49.8182500014783,  5.69215060608789,  -9.06319782846551,
-      -3.95545094132852, 158.306011440768,  17.3093272722814,
-      -1.07041222178313, -29.4179219657275, -193.750653161620,
-      -204.879616315085, -45.7180638714529, 14.9243166793925,
-      -39.5796905616838, 185.196153840653};
-  /** conrol points: c
-   *  size: 2 X degree of moment^2
-   *
-   *  25 total points odered x then y dimensions
-   */
-  float ctrlP[2 * DIM_C_REF * DIM_C_REF] = {
-      -0.333333333333333, -0.333333333333333, -0.333333333333333,
-      -0.333333333333333, -0.333333333333333, -0.166666666666667,
-      -0.166666666666667, -0.166666666666667, -0.166666666666667,
-      -0.166666666666667, 0, 0, 0, 0, 0, 0.166666666666667, 0.166666666666667,
-      0.166666666666667, 0.166666666666667, 0.166666666666667,
-      0.333333333333333, 0.333333333333333, 0.333333333333333,
-      0.333333333333333, 0.333333333333333, -0.333333333333333,
-      -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
-      -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
-      0.333333333333333, -0.333333333333333, -0.166666666666667, 0,
-      0.166666666666667, 0.333333333333333, -0.333333333333333,
-      -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
-      -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
-      0.333333333333333};
-};
-
-/** structure to save quad coordinates of each pixel
- *
- *  \note need to check the order of the array index
- *
- * (x-0.5, y-0.5)   (x+0.5, y-0.5)
- *  (x[0], y[0])     (x[1], y[1])
- *             0-----0
- *             |  0  |
- *             |(x,y)|
- *             0-----0
- *  (x[3], y[3])     (x[2], y[2])
- * (x-0.5, y+0.5)   (x+0.5, y+0.5)
- *
- */
-struct QuadCoords {
-  float x[4];
-  float y[4];
-};
-
-/** structure to save the middle coord of each pixel
- *
- */
-struct PixelCoords {
-  float x;
-  float y;
-};
-
-/** structure to save margin positions
- * top: row (y) of the first foreground pixel from top.
- * bottom: row (y) of the last foreground pixel from top.
- * left: column (x) of the first foreground pixel from left.
- * right: column (x) of the last foreground pixel from left.
- *
- */
-struct Margins {
-  int top = 0;
-  int bottom = 0;
-  int left = 0;
-  int right = 0;
-};
-
-/** setter for pixel coordinates of each pixel
- *  \param[in] pCoords     array of pixelCoords struct
- *  \param[in] w           width of the image
- *  \param[in] h           height of the image
- *
- *  \return nothing
- *  \note row-wise block stripping
- *   http://users.wfu.edu/choss/CUDA/docs/Lecture%205.pdf
- *   http://cdac.in/index.aspx?id=ev_hpc_gp-cp-hyb-com-cud-mpi-prg
  */
 void setPixelCoordsGPU(PixelCoords *pCoords, int w, int h);
 
@@ -236,7 +136,8 @@ void pCoordsDenormalizationGPU(int w, int h, PixelCoords *pCoords,
  *  \note pseudo code of geometric
  * moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
  */
-void imageMomentGPU(float *imgIn, int w, int h, float *mmt, int mmtDegree);
+void imageMomentGPU(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
+                    int mmtDegree);
 
 /** thin plate spline for pixel coordinates
  *  \param[in] imgIn           input image

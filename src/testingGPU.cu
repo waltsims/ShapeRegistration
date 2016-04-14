@@ -13,9 +13,35 @@
  */
 
 #include "testingGPU.h"
+#include "shapeRegistration.h"
 #define DIM_C_REF 5
 
 //testALLGPU(templateImg, templateIn, observationImg, observationIn, t_w, t_h, o_w, o_h, imgOut);
+
+void testImageMomentGPU(float *imgIn, PixelCoords *pImg, int w, int h, float * mmt, int mmtDegree ){
+
+	float * temp = new float[w * h * mmtDegree *mmtDegree];
+
+	imageMomentGPU( imgIn, pImg, w, h , temp, mmtDegree);
+	imageMoment( imgIn, pImg, w, h , mmt, mmtDegree);
+
+	float diff = 0.0;
+	for (int index = 0; index < w * h * mmtDegree * mmtDegree; index ++){
+		diff =+ temp[index] - mmt[index];
+	
+	}
+
+	if (diff == 0){
+		cout << "GPU mmt diff successful" << endl;
+	}
+	else{
+		cout << "mmt diff function has a total discrepincy of: " << diff << endl;
+	}
+
+	delete[] temp;
+
+
+}
 
 void testALLGPU(float *templateImg, cv::Mat templateIn, float *observationImg, cv::Mat observationIn, int t_w, int t_h, int o_w, int o_h, float *imgOut) {
 // show input images
@@ -53,6 +79,9 @@ void testALLGPU(float *templateImg, cv::Mat templateIn, float *observationImg, c
   QuadCoords *qTemplate = new QuadCoords[rt_w * rt_h];
   setQuadCoordsGPU(qTemplate, rt_w, rt_h);
   qCoordsNormalizationGPU(rt_w, rt_h, qTemplate, xCentTemplate, yCentTemplate);
+  PixelCoords *pResizedTemplate = new PixelCoords[rt_w * rt_h];
+  setPixelCoordsGPU(pResizedTemplate, rt_w, rt_h);
+  pCoordsNormalizationGPU(rt_w, rt_h, pResizedTemplate, xCentTemplate, yCentTemplate);
 
   // Time to transform the template
   TPSParams tpsParams;
@@ -62,12 +91,16 @@ void testALLGPU(float *templateImg, cv::Mat templateIn, float *observationImg, c
   PixelCoords *pResizedObservation = new PixelCoords[ro_w * ro_h];
   setPixelCoordsGPU(pResizedObservation, ro_w, ro_h);
 
-
   transferGPU(resizedTemplate, pResizedObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,
            resizedImOut);
 
 
   convert_layered_to_mat(resizedImgOut, resizedImOut);
   showImage("Resized Output", resizedImgOut, 800, 100);
+	
  
+  float * mmt = new float[rt_w * rt_h * 9 * 9 ];
+  testImageMomentGPU ( resizedTemplate, pResizedTemplate, rt_w, rt_h , mmt, 9);
+  delete[] mmt;
+
 }

@@ -339,11 +339,11 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
   // printf("observationImg first = %f, last = %f\n", observationImg[0], observationImg[rt_w * rt_h - 1]);
 
   // Normalization factors (N_i for eq.22)
-  double normalization[81]; // TODO: Make this double everywhere
-  for (int i = 0; i < 81; i++) {
+  double normalization[87]; // TODO: Make this double everywhere
+  for (int i = 0; i < 87; i++) {
     normalization[i] = dataF[offset + i];
   }
-  offset += 81;
+  offset += 87;
 
   // printf("normalization first = %f, last = %f\n", normalization[0], normalization[80]);
 
@@ -471,6 +471,30 @@ void objectiveFunction(float *observationImg, float *templateImg,
 
     // Residual norm^2 (only for output purposes)
     resNorm += residual[index] * residual[index];
+  }
+
+  // First restriction of eq.16 (2 equations)
+  int index = momentDeg * momentDeg;
+  residual[index] = 0;
+  residual[index+1] = 0;
+  int K = DIM_C_REF*DIM_C_REF;
+  for (int k = 0; k < K; k++) {
+    residual[index]   += tpsParams.localCoeff[k];
+    residual[index+1] += tpsParams.localCoeff[k + K];
+  }
+  resNorm += residual[index] * residual[index];
+  resNorm += residual[index+1] * residual[index+1];
+
+  index += 2;
+  // Second restriction of eq.16 (4 equations)
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      residual[index + (i + 2*j)] = 0;
+      for (int k = 0; k < K; k++) {
+        residual[index + (i + 2*j)] += tpsParams.ctrlP[k + j*K] * tpsParams.localCoeff[k + i*K];
+      }
+      resNorm += residual[index + (i + 2*j)] * residual[index + (i + 2*j)];
+    }
   }
 
   // Print the residual norm

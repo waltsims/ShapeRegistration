@@ -259,7 +259,6 @@ int main(int argc, char **argv) {
   /*convert_layered_to_mat(resizedImgOut, resizedImOut);*/
   /*showImage("Resized Output", resizedImgOut, 800, 100);*/
 
-	printf("pass 1\n");
 	/**printf("[Main] tpsParams affine first: %f, last: %f\n", tpsParams.affineParam[0], tpsParams.affineParam[5]);
 	printf("[Main] tpsParams localC first: %f, last: %f\n", tpsParams.localCoeff[0], tpsParams.localCoeff[2 * DIM_C_REF * DIM_C_REF - 1]);
 	printf("[Main] rt_w = %d, rt_h = %d, ro_w = %d, ro_h = %d\n", rt_w, rt_h, ro_w, ro_h);
@@ -292,7 +291,7 @@ int main(int argc, char **argv) {
 	// 1,               ro_h
 	// rt_w * rt_h,     templateImg
 	// ro_w * ro_h,     observationImg
-	// 81,              normalization TODO: Change it to include the extra 6 eq.
+	// 81,              normalization
 	// 2 * rt_w * rt_h, pTemplate
 	// 8 * rt_w * rt_h, qTemplate
 	// 2 * rt_w * rt_h, pObservation
@@ -354,7 +353,7 @@ int main(int argc, char **argv) {
   offset += 2 * ro_w * ro_h;
 	// Configuration parameters for the lmmin()
 	// Number of equations
-	int m_dat = 81; // TODO: add the 6 extra equations
+	int m_dat = 87; // TODO: add the 6 extra equations
 	lm_control_struct control = lm_control_float;
 	lm_status_struct status;
 

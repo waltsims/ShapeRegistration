@@ -231,6 +231,7 @@ int main(int argc, char **argv) {
 
   //normalized quadCoords of Template
   centerOfMass(resizedTemplate, rt_w, rt_h, xCentTemplate, yCentTemplate);
+	printf("xCentTemplate = %f, yCentTemplate = %f\n", xCentTemplate, yCentTemplate);
   QuadCoords *qTemplate = new QuadCoords[rt_w * rt_h];
   setQuadCoords(qTemplate, rt_w, rt_h);
   qCoordsNormalization(rt_w, rt_h, qTemplate, xCentTemplate, yCentTemplate);
@@ -238,13 +239,17 @@ int main(int argc, char **argv) {
   setPixelCoords(pTemplate, rt_w, rt_h);
   pCoordsNormalisation(rt_w, rt_h, pTemplate, xCentTemplate, yCentTemplate);
 
-  // Time to transform the template
+  // TPS transformation parameters
   TPSParams tpsParams;
 
-  qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
-
+	// normalized pCoords of the Observation
+	float xCentObservation;
+	float yCentObservation;
+	centerOfMass(resizedObservation, ro_w, ro_h, xCentObservation, yCentObservation);
+	printf("xCentObservation = %f, yCentObservation = %f\n", xCentObservation, yCentObservation);
   PixelCoords *pResizedObservation = new PixelCoords[ro_w * ro_h];
   setPixelCoords(pResizedObservation, ro_w, ro_h);
+	pCoordsNormalisation(ro_w, ro_h, pResizedObservation, xCentObservation, yCentObservation);
 
 
   /*transfer(resizedTemplate, pResizedObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,*/
@@ -254,19 +259,19 @@ int main(int argc, char **argv) {
   /*convert_layered_to_mat(resizedImgOut, resizedImOut);*/
   /*showImage("Resized Output", resizedImgOut, 800, 100);*/
 
-  float jacobi[rt_w * rt_h] ;
-  for ( int init = 0; init < rt_w * rt_h; init ++){
+	printf("pass 1\n");
+	/**printf("[Main] tpsParams affine first: %f, last: %f\n", tpsParams.affineParam[0], tpsParams.affineParam[5]);
+	printf("[Main] tpsParams localC first: %f, last: %f\n", tpsParams.localCoeff[0], tpsParams.localCoeff[2 * DIM_C_REF * DIM_C_REF - 1]);
+	printf("[Main] rt_w = %d, rt_h = %d, ro_w = %d, ro_h = %d\n", rt_w, rt_h, ro_w, ro_h);
+	printf("[Main] templateImg first = %f, last = %f\n", resizedTemplate[0], resizedTemplate[rt_w * rt_h - 1]);
+	printf("[Main] observationImg first = %f, last = %f\n", resizedObservation[0], resizedObservation[rt_w * rt_h - 1]);
+	printf("[Main] normalization first = %f, last = %f\n", normFactor[0], normFactor[80]);
+	printf("[Main] pTemplate first.x = %f, first.y = %f, last.x = %f, last.y = %f\n", pTemplate[0].x, pTemplate[0].y, pTemplate[rt_w * rt_h-1].x, pTemplate[rt_w * rt_h-1].y);
+	printf("[Main] qTemplate first.x[0] = %f, first.y[3] = %f, last.x[0] = %f, last.y[3] = %f\n", qTemplate[0].x[0], qTemplate[0].y[3], qTemplate[rt_w * rt_h-1].x[0], qTemplate[rt_w * rt_h-1].y[3]);
+	printf("[Main] pObservation first.x = %f, first.y = %f, last.x = %f, last.y = %f\n", pResizedObservation[0].x, pResizedObservation[0].y, pResizedObservation[ro_w * ro_h -1].x, pResizedObservation[ro_w * ro_h -1].y);
+*/
 
-	  jacobi[init] = 0;
 
-  }
-  float residual[9 * 9] = { };
-
-
-  objectiveFunction(resizedImOut, resizedTemplate, jacobi, ro_w, ro_h,
-                    normFactor, tpsParams, qTemplate, pTemplate,
-                    pResizedObservation, rt_w, rt_h, residual);
-/**
 	// Pack the parameters for the lmmin() objective function
 	int sizePar = 6 + (2 * DIM_C_REF * DIM_C_REF);
 	double *par = new double[sizePar];
@@ -291,10 +296,9 @@ int main(int argc, char **argv) {
 	// 2 * rt_w * rt_h, pTemplate
 	// 8 * rt_w * rt_h, qTemplate
 	// 2 * rt_w * rt_h, pObservation
-	// rt_w * rt_h,     jacobi
 
 	int sizeData = (4) + (rt_w * rt_h) + (ro_w * ro_h) + (81) + (2 * rt_w * rt_h)
-							 + (8 * rt_w * rt_h) + (2 * rt_w * rt_h) + (rt_w * rt_h);
+							 + (8 * rt_w * rt_h) + (2 * ro_w * ro_h);
 	float *data = new float[sizeData];
 	// current writing position in the data array
 	int offset = 0;
@@ -306,25 +310,21 @@ int main(int argc, char **argv) {
 	data[offset + 3] = ro_h;
 	// We wrote 4 elements, move the reading position 4 places
 	offset += 4;
-
   // Template image array
 	for (int i = 0; i < rt_w * rt_h; i++) {
 		data[offset + i] = resizedTemplate[i];
 	}
 	offset += rt_w * rt_h;
-
 	// Observation image array
 	for (int i = 0; i < ro_w * ro_h; i++) {
-		data[offset + i] = resizedImOut[i];
+		data[offset + i] = resizedObservation[i];
 	}
 	offset += ro_w * ro_h;
-
 	// Normalization factors (N_i for eq.22)
 	for (int i = 0; i < 81; i++) {
 		data[offset + i] = normFactor[i];
 	}
 	offset += 81;
-
 	// Pixel coordinates of the template
 	// Every element is a struct with two fields: x, y
 	for (int i = 0; i < rt_w * rt_h; i++) {
@@ -332,7 +332,6 @@ int main(int argc, char **argv) {
 		data[offset + 2*i+1] = pTemplate[i].y;
 	}
 	offset += 2 * rt_w * rt_h;
-
 	// Quad coordinates of the template
 	// Every element has two fields (x,y) that are arrays of four elements (corners)
 	for (int i = 0; i < rt_w * rt_h; i++) {
@@ -346,7 +345,6 @@ int main(int argc, char **argv) {
 		data[offset + 8*i+7] = qTemplate[i].y[3];
 	}
 	offset += 8 * rt_w * rt_h;
-
 	// Pixel coordinates of the observation
   // Every element is a struct with two fields: x, y
   for (int i = 0; i < ro_w * ro_h; i++) {
@@ -354,13 +352,6 @@ int main(int argc, char **argv) {
     data[offset + 2*i+1] = pResizedObservation[i].y;
   }
   offset += 2 * ro_w * ro_h;
-
-	// Jacobi determinants
-	for (int i = 0; i < rt_w * rt_h; i++) {
-		data[offset + i] = jacobi[i];
-	}
-	offset += rt_w * rt_h;
-
 	// Configuration parameters for the lmmin()
 	// Number of equations
 	int m_dat = 81; // TODO: add the 6 extra equations
@@ -368,13 +359,12 @@ int main(int argc, char **argv) {
 	lm_status_struct status;
 
 	// Call the lmmin() using the wrapper for the objective function
-	// lmmin( sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status );
-*/
+	lmmin( sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status );
+
   //stop timer here
   timer.end();
   float t = timer.get();  // elapsed time in seconds
   cout << "time: " << t * 1000 << " ms" << endl;
-
   // wait for key inputs
   cv::waitKey(0);
   // save input and result

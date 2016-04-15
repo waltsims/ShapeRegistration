@@ -339,11 +339,11 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
   // printf("observationImg first = %f, last = %f\n", observationImg[0], observationImg[rt_w * rt_h - 1]);
 
   // Normalization factors (N_i for eq.22)
-  double normalization[87]; // TODO: Make this double everywhere
-  for (int i = 0; i < 87; i++) {
+  double normalization[81]; // TODO: Make this double everywhere
+  for (int i = 0; i < 81; i++) {
     normalization[i] = dataF[offset + i];
   }
-  offset += 87;
+  offset += 81;
 
   // printf("normalization first = %f, last = %f\n", normalization[0], normalization[80]);
 
@@ -435,15 +435,10 @@ void objectiveFunction(float *observationImg, float *templateImg,
   printf("jacobi[0] = %f, jacobi[100] = %f, jacobi[last] = %f\n", jacobi[0], jacobi[100], jacobi[rt_w * rt_h - 1]);
 
   // calculate tps transformation of template
-  qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
-
-  float *templateImgTransf = new float[rt_w * rt_h];
-
-  transfer(templateImg, pTemplate, qTemplate, rt_w, rt_h, rt_w, rt_h,
-           templateImgTransf);
+  pTPS(rt_w, rt_h, pTemplate, tpsParams, DIM_C_REF);
 
   // get the moments of the TPS transformation of the template
-  imageMoment(templateImgTransf, pTemplate, rt_w, rt_h, templateMoment, momentDeg);
+  imageMoment(templateImg, pTemplate, rt_w, rt_h, templateMoment, momentDeg);
   // get the moments of the observation
   imageMoment(observationImg, pObservation, ro_w, ro_h, observationMoment, momentDeg);
 
@@ -503,7 +498,6 @@ void objectiveFunction(float *observationImg, float *templateImg,
 
   delete[] observationMoment;
   delete[] templateMoment;
-  delete[] templateImgTransf;
 };
 
 // PixelCoords* pCoordsSigma

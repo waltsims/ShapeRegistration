@@ -5,6 +5,22 @@ sr
 #CMake stuff
 CMakeFiles/
 CMakeCache.txt
+Makefile
+3rdparty/lmfit-6.1/share
+3rdparty/lmfit-6.1/src
+3rdparty/lmfit-6.1/lib/*.so*
+3rdparty/lmfit-6.1/lib/pkgconfig
+3rdparty/lmfit-6.1/tmp
+*.cmake
+3rdparty/lmfit-6.1/include
+3rdparty/lmfit-6.1/demo/.libs
+
+
+#Gedit files
+*~
+#Exicution leftovers
+image_input.png
+image_result.png
 
 
 #Gedit files

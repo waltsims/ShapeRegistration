@@ -16,6 +16,7 @@
 #ifndef HELPER_H
 #define HELPER_H
 
+#include <device_functions.h>
 #include <cuda_runtime.h>
 #include <ctime>
 #include <opencv2/highgui/highgui.hpp>
@@ -103,4 +104,4 @@ void cuda_check(std::string file, int line);
 
 
 
-#endif  // AUX_H
+#endif  // HELPER_H

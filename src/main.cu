@@ -208,16 +208,6 @@ int main(int argc, char **argv) {
   // wait for key inputs
   cv::waitKey(0);
   // save input and result
-  /*cv::imwrite("image_input.png",*/
-  /*mIn * 255.f);  // "imwrite" assumes channel range [0,255]*/
-  /*cv::imwrite("image_result.png", mOut * 255.f);*/
-
-  // free allocated arrays
-/*  delete[] observationImg;
-  delete[] templateImg;
-
-  delete[] imgOut;
-  delete[] resizedImOut;*/
 
   // close all opencv windows
   cvDestroyAllWindows();

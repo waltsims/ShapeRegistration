@@ -24,6 +24,8 @@
   using namespace std;
   using namespace cv;
 
+ void testImageMomentGPU(float *imgIn, PixelCoords *pImg, int w, int h, float * mmt, int mmtDegree );
+
   /** Function to perform all the available tests
    *  \param[in] imgIn              array of the input image pixels
    *  \param[in] mIn                cv::Mat form of the input image

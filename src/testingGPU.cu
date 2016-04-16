@@ -12,8 +12,7 @@
  *  \copyright to be added
  */
 
-#include "testingGPU.h"
-#include "shapeRegistration.h"
+#include "testingGPU.h" 
 #define DIM_C_REF 5
 
 //testALLGPU(templateImg, templateIn, observationImg, observationIn, t_w, t_h, o_w, o_h, imgOut);
@@ -23,7 +22,6 @@ void testImageMomentGPU(float *imgIn, PixelCoords *pImg, int w, int h, float * m
 	float * temp = new float[w * h * mmtDegree *mmtDegree];
 
 	imageMomentGPU( imgIn, pImg, w, h , temp, mmtDegree);
-	imageMoment( imgIn, pImg, w, h , mmt, mmtDegree);
 
 	float diff = 0.0;
 	for (int index = 0; index < w * h * mmtDegree * mmtDegree; index ++){

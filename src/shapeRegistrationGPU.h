@@ -46,6 +46,9 @@ void setPixelCoordsGPU(PixelCoords *pCoords, int w, int h);
  */
 void setQuadCoordsGPU(QuadCoords *qCoords, int w, int h);
 
+void cutMargins(float *imgIn, int w, int h, int &resizedW, int &resizedH,
+                Margins &margins);
+
 /** cut margins of the image
  *  \param[in] imgIn              array of the input image pixels
  *  \param[in] w                  width of the image
@@ -59,8 +62,8 @@ void setQuadCoordsGPU(QuadCoords *qCoords, int w, int h);
  *
  *  \return nothing
  */
-void cutMarginsGPU(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
-                int &resizedH, Margins &margins);
+void cutMarginsGPU(float *imgIn, int w, int h, float *&resizedImg,
+                   int &resizedW, int &resizedH, Margins &margins);
 
 /** add the original margins to a cropped image
  *  \param[in] resizedImg         array of the cropped image pixels
@@ -75,7 +78,7 @@ void cutMarginsGPU(float *imgIn, int w, int h, float *&resizedImg, int &resizedW
  *  \return nothing
  */
 void addMarginsGPU(float *resizedimg, int resizedW, int resizedH, float *imgOut,
-                int w, int h, Margins &margins);
+                   int w, int h, Margins &margins);
 
 /** set the center of mass of the image
  *  \param[in] imgIn              input image
@@ -87,7 +90,7 @@ void addMarginsGPU(float *resizedimg, int resizedW, int resizedH, float *imgOut,
  *  \return nothing
  */
 void centerOfMassGPU(float *h_imgIn, int h_w, int h_h, float &h_xCentCoord,
-                     float &h_yCentCoord) ;
+                     float &h_yCentCoord);
 
 /** normalize the center coordinates for each pixel
  *  \param[in] w                  width of the image
@@ -98,8 +101,8 @@ void centerOfMassGPU(float *h_imgIn, int h_w, int h_h, float &h_xCentCoord,
  *
  *  \return nothing
  */
-void pCoordsNormalizationGPU(int w, int h, PixelCoords *pCoords, float xCentCoord,
-                          float yCentCoord);
+void pCoordsNormalizationGPU(int w, int h, PixelCoords *pCoords,
+                             float xCentCoord, float yCentCoord);
 
 /** normalize the quad coordinates for each pixel
  *  \param[in] w                  width of the image
@@ -110,8 +113,8 @@ void pCoordsNormalizationGPU(int w, int h, PixelCoords *pCoords, float xCentCoor
  *
  *  \return nothing
  */
-void qCoordsNormalizationGPU(int w, int h, QuadCoords *qCoords, float xCentCoord,
-                          float yCentCoord);
+void qCoordsNormalizationGPU(int w, int h, QuadCoords *qCoords,
+                             float xCentCoord, float yCentCoord);
 
 /** inverse normalization of the image coordinates
  *  \param[in] w                  width of the image
@@ -123,7 +126,7 @@ void qCoordsNormalizationGPU(int w, int h, QuadCoords *qCoords, float xCentCoord
  *  \return nothing
  */
 void pCoordsDenormalizationGPU(int w, int h, PixelCoords *pCoords,
-                            float xCentCoord, float yCentCoord);
+                               float xCentCoord, float yCentCoord);
 
 /** calculate moment of the image
  *  \param[in] imgIn             input image
@@ -152,7 +155,7 @@ void imageMomentGPU(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
 void pTPSGPU(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams,
-          int mmtDegree);
+             int mmtDegree);
 
 /** radial basis approximation
  *  \param[in] x         x-coordinates of current pixel as
@@ -179,7 +182,7 @@ float radialApproxGPU(float x, float y, float cx, float cy);
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
 void qTPSGPU(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
-          int mmtDegree);
+             int mmtDegree);
 
 /** jacobian transformation
  *  \param[in] w               width of the image
@@ -193,12 +196,12 @@ void qTPSGPU(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
 void jacobianTransGPU(int w, int h, float *jacobi, TPSParams &tpsParams,
-                   int mmtDegree);
+                      int mmtDegree);
 /** Discription to come
  *
  * */
-void transferGPU(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_w,
-              int t_h, int o_w, int o_h, float *imgOut); 
+void transferGPU(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords,
+                 int t_w, int t_h, int o_w, int o_h, float *imgOut);
 
 /** check whether a point is inside polygon or not
  *  \param[in] nVert       Number of vertices in the polygon. Whether to repeat
@@ -215,12 +218,12 @@ void transferGPU(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_
  * https://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html#Polyhedron
  */
 bool pointInPolygonGPU(int nVert, float *vertX, float *vertY, float testX,
-                    float testY);
+                       float testY);
 void objectiveFunctionGPU(float *observationImg, float *templateImg,
-                        float *jacobi, int ro_w, int ro_h,
-                        double *normalisation, TPSParams &tpsParams,
-                        QuadCoords *qTemplate, PixelCoords *pTemplate,
-                        PixelCoords *pObservation, int rt_w, int rt_h,
-                        float *residual) ;
+                          float *jacobi, int ro_w, int ro_h,
+                          double *normalisation, TPSParams &tpsParams,
+                          QuadCoords *qTemplate, PixelCoords *pTemplate,
+                          PixelCoords *pObservation, int rt_w, int rt_h,
+                          float *residual);
 
 #endif  // SHAPEREGISTRATION_H

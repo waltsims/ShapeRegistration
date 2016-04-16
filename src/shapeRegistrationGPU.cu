@@ -31,7 +31,7 @@ __global__ void setPixelCoordsKernel(PixelCoords *d_pCoords, int d_w, int d_h) {
 }
 
 void setPixelCoordsGPU(PixelCoords *h_pCoords, int h_w, int h_h) {
-  dim3 block = dim3(128, 1, 1);
+  dim3 block = dim3(16, 8, 1);
   dim3 grid =
       dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
 
@@ -82,7 +82,7 @@ __global__ void imageMomentKernel(float *d_imgIn, PixelCoords *d_pImg, int d_w,
 
 void imageMomentGPU(float *h_imgIn, PixelCoords *h_pImg, int h_w, int h_h,
                     float *h_mmt, int h_mmtDegree) {
-  dim3 block = dim3(128, 1, 1);
+  dim3 block = dim3(16, 8, 1);
   dim3 grid =
       dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
 
@@ -140,7 +140,7 @@ __global__ void setQuadCoordsKernel(QuadCoords *d_qCoords, int d_w, int d_h) {
 }
 
 void setQuadCoordsGPU(QuadCoords *h_qCoords, int h_w, int h_h) {
-  dim3 block = dim3(128, 1, 1);
+  dim3 block = dim3(16, 8, 1);
   dim3 grid =
       dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
 
@@ -161,8 +161,9 @@ void setQuadCoordsGPU(QuadCoords *h_qCoords, int h_w, int h_h) {
   CUDA_CHECK;
 }
 
-void cutMarginsGPU(float *imgIn, int w, int h, float *&resizedImg,
-                   int &resizedW, int &resizedH, Margins &margins) {
+//gpu version is much slower
+void cutMargins(float *imgIn, int w, int h, int &resizedW, int &resizedH,
+                Margins &margins) {
   /** Initialize the the margin positions */
   margins.top = -1;
   margins.bottom = -1;
@@ -224,17 +225,63 @@ void cutMarginsGPU(float *imgIn, int w, int h, float *&resizedImg,
   /** Height and width of the cropped image */
   resizedH = margins.bottom - margins.top + 1;
   resizedW = margins.right - margins.left + 1;
+}
 
-  /** Allocate the cropped image array */
-  resizedImg = new float[resizedW * resizedH];
+__global__ void cutMarginsGPUKernel(float *d_imgIn, float *d_resizedImg,
+                                    int d_w, int d_resizedW, int d_resizedH,
+                                    Margins d_margins) {
+  int resizedImgIndex;
+  int originImgIndex;
 
-  /** Assign the respective full image pixels to the cropped image pixels */
-  for (int y = 0; y < resizedH; y++) {
-    for (int x = 0; x < resizedW; x++) {
-      resizedImg[x + resizedW * y] =
-          imgIn[(x + margins.left) + (w * (y + margins.top))];
-    }
+  int x = threadIdx.x + blockDim.x * blockIdx.x;
+  int y = threadIdx.y + blockDim.y * blockIdx.y;
+
+  if (x < d_resizedW && y < d_resizedH) {
+    resizedImgIndex = x + y * d_resizedW;
+    originImgIndex = x + d_margins.left + (d_w * (y + d_margins.top));
+
+    d_resizedImg[resizedImgIndex] = d_imgIn[originImgIndex];
   }
+}
+
+void cutMarginsGPU(float *h_imgIn, int h_w, int h_h, float *&h_resizedImg,
+                   int &h_resizedW, int &h_resizedH, Margins &h_margins) {
+
+  //gpu version is much slower
+  cutMargins(h_imgIn, h_w, h_h, h_resizedW, h_resizedH, h_margins);
+
+  h_resizedImg = new float[h_resizedW * h_resizedH];
+
+  dim3 block = dim3(h_resizedW, 1, 1);
+  dim3 grid = dim3((h_resizedW + block.x - 1) / block.x,
+                   (h_resizedH + block.y - 1) / block.y, 1);
+
+  float *d_imgIn;
+  float *d_resizedImg;
+
+  cudaMalloc(&d_imgIn, h_w * h_h * sizeof(float));
+  CUDA_CHECK;
+
+  cudaMalloc(&d_resizedImg, h_resizedW * h_resizedH * sizeof(float));
+  CUDA_CHECK;
+
+  cudaMemcpy(d_imgIn, h_imgIn, h_w * h_h * sizeof(float),
+             cudaMemcpyHostToDevice);
+
+  cudaMemset(d_resizedImg, 0, h_resizedW * h_resizedH * sizeof(float));
+  CUDA_CHECK;
+
+  cutMarginsGPUKernel << <grid, block>>>
+      (d_imgIn, d_resizedImg, h_w, h_resizedW, h_resizedH, h_margins);
+  CUDA_CHECK;
+
+  cudaMemcpy(h_resizedImg, d_resizedImg,
+             h_resizedW * h_resizedH * sizeof(float), cudaMemcpyDeviceToHost);
+
+  cudaFree(d_imgIn);
+  CUDA_CHECK;
+  cudaFree(d_resizedImg);
+  CUDA_CHECK;
 }
 
 __global__ void addMarginsKernel(float *d_resizedImg, int d_resizedW,
@@ -301,7 +348,6 @@ __global__ void centerOfMassKernel(float *d_imgIn, int d_w, int d_h,
 
   __syncthreads();
   if (x_t == 0 && y_d == 1) {
-    printf("check3\n");
   }
   if (x_t < d_w && y_d < d_h) {
     for (int offset = d_w / 2; offset > 0; offset /= 2) {
@@ -315,21 +361,11 @@ __global__ void centerOfMassKernel(float *d_imgIn, int d_w, int d_h,
   }
 
   __syncthreads();
-  if (x_t == 0 && y_d == 1) {
-    printf("check4\n");
-  }
-
-  if (x_t == 0 && y_d == 1) {
-    printf("check5\n");
-  }
 
   if (x_t == 0 && y_d < d_h) {
     d_xCentCoord[y_d] = s_data[0];
     d_yCentCoord[y_d] = s_data[d_w];
     numberOfForegroundPixel[y_d] = s_data[d_w + d_w];
-  }
-  if (x_t == 0 && y_d == 1) {
-    printf("check6\n");
   }
 }
 
@@ -428,7 +464,7 @@ __global__ void pCoordsNormalizationKernel(int d_w, int d_h,
 
 void pCoordsNormalizationGPU(int h_w, int h_h, PixelCoords *h_pCoords,
                              float h_xCentCoord, float h_yCentCoord) {
-  dim3 block = dim3(128, 1, 1);
+  dim3 block = dim3(16, 8, 1);
   dim3 grid =
       dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
 
@@ -486,7 +522,7 @@ __global__ void qCoordsNormalizationKernel(int d_w, int d_h,
 
 void qCoordsNormalizationGPU(int h_w, int h_h, QuadCoords *h_qCoords,
                              float h_xCentCoord, float h_yCentCoord) {
-  dim3 block = dim3(128, 1, 1);
+  dim3 block = dim3(16, 8, 1);
   dim3 grid =
       dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
 
@@ -544,6 +580,7 @@ __global__ void pTPSGPUKernel(int d_w, int d_h, PixelCoords *d_pCoords,
       for (int i = 0; i < 2; i++) {
         freeDeformation[i] += d_tpsParams.localCoeff[k + (i * dimSize)] * Q;
       }
+      // freeDeformation[i] = cublasSaxpy(handle, 1, &Q, d_tpsParams.localCoeff[k + (i * dimSize)], 1, freeDeformation[i], 1);
     }
 
     // note:: change
@@ -562,7 +599,7 @@ __global__ void pTPSGPUKernel(int d_w, int d_h, PixelCoords *d_pCoords,
 
 void pTPSGPU(int h_w, int h_h, PixelCoords *h_pCoords, TPSParams &h_tpsParams,
              int h_cDim) {
-  dim3 block = dim3(128, 1, 1);
+  dim3 block = dim3(16, 8, 1);
   dim3 grid =
       dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
 
@@ -635,7 +672,7 @@ __global__ void qTPSKernel(int d_w, int d_h, QuadCoords *d_qCoords,
 
 void qTPSGPU(int h_w, int h_h, QuadCoords *h_qCoords, TPSParams &h_tpsParams,
              int h_cDim) {
-  dim3 block = dim3(128, 1, 1);
+  dim3 block = dim3(16, 8, 1);
   dim3 grid =
       dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
 
@@ -647,7 +684,7 @@ void qTPSGPU(int h_w, int h_h, QuadCoords *h_qCoords, TPSParams &h_tpsParams,
              cudaMemcpyHostToDevice);
   CUDA_CHECK;
 
-  qTPSKernel <<< grid, block >>> (h_w, h_h, d_qCoords, h_tpsParams, h_cDim);
+  qTPSKernel << <grid, block>>> (h_w, h_h, d_qCoords, h_tpsParams, h_cDim);
   CUDA_CHECK;
 
   cudaMemcpy(h_qCoords, d_qCoords, h_h * h_w * sizeof(QuadCoords),
@@ -659,56 +696,54 @@ void qTPSGPU(int h_w, int h_h, QuadCoords *h_qCoords, TPSParams &h_tpsParams,
 }
 
 __global__ void jacobianTransGPUKernel(int d_w, int d_h, float *d_jacobi,
-                                        TPSParams &d_tpsParams, int d_c_dim) {
+                                       TPSParams &d_tpsParams, int d_c_dim) {
+  int x = threadIdx.x + blockDim.x * blockIdx.x;
+  int y = threadIdx.y + blockDim.y * blockIdx.y;
 
-    int x = threadIdx.x + blockDim.x * blockIdx.x;
-    int y = threadIdx.y + blockDim.y * blockIdx.y;
+  int indexP, indexJ;
+  int K = d_c_dim * d_c_dim;
+  float squareOfNorm;
+  float precomp;
+  float x_j;
 
-    int indexP, indexJ;
-    int K = d_c_dim * d_c_dim;
-    float squareOfNorm;
-    float precomp;
-    float x_j;
+  if (x < d_w && y < d_h) {
+    indexP = x + d_w * y;
 
-    if (x < d_w && y < d_h) {
+    for (int i = 0; i < 2; i++) {
+      for (int j = 0; j < 2; j++) {
+        indexJ = 4 * indexP + i + 2 * j;
+        d_jacobi[indexJ] = d_tpsParams.affineParam[i + 2 * j];
+      }
+    }
 
-      indexP = x + d_w * y;
+    __syncthreads();
+
+    for (int k = 0; k < K; k++) {
+      squareOfNorm =
+          (d_tpsParams.ctrlP[k] - x) * (d_tpsParams.ctrlP[k] - x) +
+          (d_tpsParams.ctrlP[k + K] - y) * (d_tpsParams.ctrlP[k + K] - y);
+
+      if (squareOfNorm > 0.000001) {
+        precomp = 2 * (1 + log(squareOfNorm));
+      } else {
+        precomp = 2;
+      }
 
       for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2; j++) {
           indexJ = 4 * indexP + i + 2 * j;
-          d_jacobi[indexJ] = d_tpsParams.affineParam[i + 2 * j];
-        }
-      }
-
-      __syncthreads();
-
-      for (int k = 0; k < K; k++) {
-        squareOfNorm =
-            (d_tpsParams.ctrlP[k] - x) * (d_tpsParams.ctrlP[k] - x) +
-            (d_tpsParams.ctrlP[k + K] - y) * (d_tpsParams.ctrlP[k + K] - y);
-
-        if (squareOfNorm > 0.000001) {
-          precomp = 2 * (1 + log(squareOfNorm));
-        } else {
-          precomp = 2;
-        }
-
-        for (int i = 0; i < 2; i++) {
-          for (int j = 0; j < 2; j++) {
-            indexJ = 4 * indexP + i + 2 * j;
-            x_j = (j == 0 ? x : y);
-            d_jacobi[indexJ] -= precomp * d_tpsParams.localCoeff[k + i * K] *
+          x_j = (j == 0 ? x : y);
+          d_jacobi[indexJ] -= precomp * d_tpsParams.localCoeff[k + i * K] *
                               (d_tpsParams.ctrlP[k + j * K] - x_j);
-          }
         }
       }
     }
+  }
 }
 
 void jacobianTransGPU(int h_w, int h_h, float *h_jacobi, TPSParams h_tpsParams,
                       int h_c_dim) {
-  dim3 block = dim3(128, 1, 1);
+  dim3 block = dim3(16, 8, 1);
   dim3 grid =
       dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
 
@@ -718,7 +753,7 @@ void jacobianTransGPU(int h_w, int h_h, float *h_jacobi, TPSParams h_tpsParams,
   cudaMemset(d_jacobi, 0, h_w * h_h * 4 * sizeof(float));
   CUDA_CHECK;
 
-  jacobianTransGPUKernel <<<grid, block>>>
+  jacobianTransGPUKernel << <grid, block>>>
       (h_w, h_h, d_jacobi, h_tpsParams, h_c_dim);
   CUDA_CHECK;
 
@@ -729,48 +764,6 @@ void jacobianTransGPU(int h_w, int h_h, float *h_jacobi, TPSParams h_tpsParams,
   cudaFree(d_jacobi);
   CUDA_CHECK;
 }
-
-/*  int index;
-  int p_index;
-
-  for (int j = 0; j < t_h; j++) {
-    for (int i = 0; i < t_w; i++) {
-      index = i + t_w * j;
-      if (imgIn[index] == FOREGROUND) {
-        float xpolygon[4] = {qCoords[index].x[0], qCoords[index].x[1],
-                             qCoords[index].x[2], qCoords[index].x[3]};
-        float ypolygon[4] = {qCoords[index].y[0], qCoords[index].y[1],
-                             qCoords[index].y[2], qCoords[index].y[3]};
-
-
-
-        int xLeftOffset = int(floor(min(qCoords[index].x[0],
-  qCoords[index].x[3])));
-        int xRightOffset = int(ceil(max(qCoords[index].x[1],
-  qCoords[index].x[2])));
-        int yTopOffset = int(floor(min(qCoords[index].y[0],
-  qCoords[index].y[1])));
-        int yBottomOffset = int(ceil(max(qCoords[index].y[2],
-  qCoords[index].y[3])));
-
-
-        printf("------------i, j = %d, %d-------------\n", i, j);
-        printf("left, right = %d, %d||", xLeftOffset, xRightOffset);
-        printf("top, bottom = %d, %d\n", yTopOffset, yBottomOffset);
-        // TODO create local index to search for neignboring points
-        // withing bounding box of polygon
-        for (int y = yTopOffset; y < yBottomOffset; y++) {
-          for (int x = xLeftOffset; x < xRightOffset; x++) {
-            p_index = x + o_w * y;
-
-            if (pointInPolygonGPU(4, xpolygon, ypolygon, pCoords[p_index].x,
-                               pCoords[p_index].y))
-              imgOut[p_index] = FOREGROUND;
-          }
-        }
-      }
-    }
-  }*/
 
 __device__ bool pointInPolygonKernel(int nVert, float *vertX, float *vertY,
                                      float testX, float testY) {
@@ -797,6 +790,9 @@ __global__ void transferKernel(float *d_imgIn, PixelCoords *d_pCoords,
   int j = threadIdx.y + blockDim.y * blockIdx.y;
 
   int p_index;
+  if( i == 0 && j == 0) {
+    printf("transferkernel : %d, %d\n", d_o_w, d_o_h);
+  }
 
   if (i < d_t_w && j < d_t_h) {
     index = i + d_t_w * j;
@@ -821,7 +817,9 @@ __global__ void transferKernel(float *d_imgIn, PixelCoords *d_pCoords,
 
 void transferGPU(float *h_imgIn, PixelCoords *h_pCoords, QuadCoords *h_qCoords,
                  int h_t_w, int h_t_h, int h_o_w, int h_o_h, float *h_imgOut) {
-  dim3 block = dim3(128, 1, 1);
+
+  printf("transfergpu : %d, %d\n", h_o_w, h_o_h);
+  dim3 block = dim3(16, 8, 1);
   dim3 grid =
       dim3((h_t_w + block.x - 1) / block.x, (h_t_h + block.y - 1) / block.y, 1);
 

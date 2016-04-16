@@ -323,7 +323,6 @@ __global__ void centerOfMassKernel(float *d_imgIn, int d_w, int d_h,
                                    float *numberOfForegroundPixel) {
   int index;
 
-  int x = threadIdx.x + blockDim.x * blockIdx.x;
   int x_t = threadIdx.x;
   int y_d = blockIdx.x;
 
@@ -371,9 +370,7 @@ __global__ void centerOfMassKernel(float *d_imgIn, int d_w, int d_h,
 
 void centerOfMassGPU(float *h_imgIn, int h_w, int h_h, float &h_xCentCoord,
                      float &h_yCentCoord) {
-  const int sizeOfImg = h_w * h_h;
   const int nThreads = h_w;
-  const int sizeOfReduction = (sizeOfImg / nThreads + sizeOfImg % nThreads);
 
   printf("h_w, h_h : (%d, %d)\n", h_w, h_h);
 

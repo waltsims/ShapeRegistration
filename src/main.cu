@@ -245,7 +245,6 @@ int main(int argc, char **argv) {
   // TPS transformation parameters
   TPSParams tpsParams;
 
-	// normalized pCoords of the Observation
 	float xCentObservation;
 	float yCentObservation;
 	centerOfMass(resizedObservation, ro_w, ro_h, xCentObservation, yCentObservation);
@@ -256,6 +255,7 @@ int main(int argc, char **argv) {
 	pCoordsNormalisation(ro_w, ro_h, pResizedObservation, xCentObservation, yCentObservation, o_sx, o_sy);
 	printf("o_sx = %f, o_sy = %f\n", o_sx, o_sy);
 	printf("detN2 = %f\n", o_sx*o_sy);
+	// normalized pCoords of the Observation
 
 
   /*transfer(resizedTemplate, pResizedObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,*/
@@ -265,16 +265,6 @@ int main(int argc, char **argv) {
   /*convert_layered_to_mat(resizedImgOut, resizedImOut);*/
   /*showImage("Resized Output", resizedImgOut, 800, 100);*/
 
-	/**printf("[Main] tpsParams affine first: %f, last: %f\n", tpsParams.affineParam[0], tpsParams.affineParam[5]);
-	printf("[Main] tpsParams localC first: %f, last: %f\n", tpsParams.localCoeff[0], tpsParams.localCoeff[2 * DIM_C_REF * DIM_C_REF - 1]);
-	printf("[Main] rt_w = %d, rt_h = %d, ro_w = %d, ro_h = %d\n", rt_w, rt_h, ro_w, ro_h);
-	printf("[Main] templateImg first = %f, last = %f\n", resizedTemplate[0], resizedTemplate[rt_w * rt_h - 1]);
-	printf("[Main] observationImg first = %f, last = %f\n", resizedObservation[0], resizedObservation[rt_w * rt_h - 1]);
-	printf("[Main] normalization first = %f, last = %f\n", normFactor[0], normFactor[80]);
-	printf("[Main] pTemplate first.x = %f, first.y = %f, last.x = %f, last.y = %f\n", pTemplate[0].x, pTemplate[0].y, pTemplate[rt_w * rt_h-1].x, pTemplate[rt_w * rt_h-1].y);
-	printf("[Main] qTemplate first.x[0] = %f, first.y[3] = %f, last.x[0] = %f, last.y[3] = %f\n", qTemplate[0].x[0], qTemplate[0].y[3], qTemplate[rt_w * rt_h-1].x[0], qTemplate[rt_w * rt_h-1].y[3]);
-	printf("[Main] pObservation first.x = %f, first.y = %f, last.x = %f, last.y = %f\n", pResizedObservation[0].x, pResizedObservation[0].y, pResizedObservation[ro_w * ro_h -1].x, pResizedObservation[ro_w * ro_h -1].y);
-*/
 
 
 	// Pack the parameters for the lmmin() objective function
@@ -375,19 +365,30 @@ int main(int argc, char **argv) {
 	int m_dat = 87; // TODO: add the 6 extra equations
 	lm_control_struct control = lm_control_float;
 	lm_status_struct status;
+	control.patience = 25;
 
 	// Call the lmmin() using the wrapper for the objective function
 	lmmin( sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status );
 
-	// double residual[87] = {};
-	// objectiveFunction(resizedObservation, resizedTemplate, ro_w, ro_h,
-  //                   normFactor, tpsParams, qTemplate, pTemplate,
-  //                   pResizedObservation, rt_w, rt_h, residual);
+	// unPack the affineParam
+	for (int i = 0; i < 6; i++) {
+		 tpsParams.affineParam[i] = par[i] ;
+	}
+	// unPack the localCoeff
+	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
+		tpsParams.localCoeff[i] = par[i+6]  ;
+	}
+
+	
+   qTPS( rt_w,  rt_h, qTemplate, tpsParams,  DIM_C_REF) ;
+
+  transfer(resizedImOut, pResizedObservation, ro_w, ro_h,
+		   resizedTemplate, qTemplate, rt_w, rt_h);
 
 
-	// objectiveFunction(observationImg, templateImg, ro_w, ro_h,
-  //                   normalization, tpsParams, qTemplate, pTemplate,
-  //                   pObservation, rt_w, rt_h, residual);
+  convert_layered_to_mat(resizedImgOut, resizedImOut);
+  showImage("Resized Output", resizedImgOut, 800, 100);
+
 
 
   //stop timer here

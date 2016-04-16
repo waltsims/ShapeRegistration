@@ -180,10 +180,10 @@ void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
 
 // TODO maybe should be called normalize
 void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
-                          float yCentCoord) {
+                          float yCentCoord, float &normXFactor, float &normYFactor) {
   // Scaling factors per x,y (1/sx, 1/sy in the Matlab implementation)
-  float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
-  float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
+  normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
+  normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
   // Index in the image array
   int index;
@@ -203,10 +203,10 @@ void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
 
 // TODO maybe should be called normalize
 void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
-                          float yCentCoord) {
+                          float yCentCoord, float &normXFactor, float &normYFactor) {
   // Scaling factors per x,y (1/sx, 1/sy in the Matlab implementation)
-  float normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
-  float normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
+  normXFactor = 0.5 / max(xCentCoord, w - xCentCoord);
+  normYFactor = 0.5 / max(yCentCoord, h - yCentCoord);
 
   // Index in the image array
   int index;
@@ -384,6 +384,18 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
   }
   offset += 2 * ro_w * ro_h;
 
+  // Normalisation factors of the template
+  float t_sx, t_sy;
+  t_sx = dataF[offset    ];
+  t_sy = dataF[offset + 1];
+  offset += 2;
+
+  // Normalisation factors of the observation
+  float o_sx, o_sy;
+  o_sx = dataF[offset    ];
+  o_sy = dataF[offset + 1];
+  offset += 2;
+
   // printf("pObservation first.x = %f, last.y = %f\n", pObservation[0].x, pObservation[ro_w * ro_h -1].y);
 
   // Array of the residuals of the equations
@@ -393,7 +405,7 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
   // Call the objective function with the unpacked arguments
   objectiveFunction(observationImg, templateImg, ro_w, ro_h,
                     normalization, tpsParams, qTemplate, pTemplate,
-                    pObservation, rt_w, rt_h, residual);
+                    pObservation, rt_w, rt_h, t_sx, t_sy, o_sx, o_sy, residual);
 
   // printf("residual first = %f, last = %f\n", residual[0], residual[80]);
 
@@ -412,6 +424,7 @@ void objectiveFunction(float *observationImg, float *templateImg,
                         double *normalisation, TPSParams &tpsParams,
                         QuadCoords *qTemplate, PixelCoords *pTemplate,
                         PixelCoords *pObservation, int rt_w, int rt_h,
+                        float t_sx, float t_sy, float o_sx, float o_sy,
                         double *residual) {
   printf("called!\n");
   int momentDeg = 9;
@@ -442,6 +455,13 @@ void objectiveFunction(float *observationImg, float *templateImg,
   // get the moments of the observation
   imageMoment(observationImg, pObservation, ro_w, ro_h, observationMoment, momentDeg);
 
+  // Determinant of the normFactor of the normalized template image
+  float detN1 = 0;
+  detN1 = t_sx * t_sy;
+  // Determinant of the normFactor of the normalized observation image
+  float detN2 = 0;
+  detN2 = o_sx * o_sy;
+
   // Sum the moments of each degree for each pixel of the two images
   for (int index = 0; index < momentDeg * momentDeg; index++) {
     // Transformed template
@@ -452,6 +472,8 @@ void objectiveFunction(float *observationImg, float *templateImg,
             jacobi[x + rt_w * y];
       }
     }
+    sumTempMoment[index] /= detN2;
+
     // Observation
     for (int y = 0; y < ro_h; y++) {
       for (int x = 0; x < ro_w; x++) {
@@ -459,6 +481,7 @@ void objectiveFunction(float *observationImg, float *templateImg,
             observationMoment[index * (ro_h * ro_w) + (x + ro_w * y)];
       }
     }
+    sumObsMoment[index] /= detN1;
 
     // Compute the residual as the difference between the LHS and the RHS of eq.22
     residual[index] =

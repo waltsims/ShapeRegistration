@@ -143,7 +143,7 @@
 
     // Test: pCoordsNormalisation() [OK]
     printf("---Testing the pCoordsNormalisation()-------------\n");
-    pCoordsNormalisation(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+    // pCoordsNormalisation(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
     printf("pCoords[0].x = %f\n", pCoords[0].x);
     printf("pCoords[0].y = %f\n", pCoords[0].y);
     printf("pCoords[last].x = %f\n", pCoords[lastIndex].x);
@@ -185,7 +185,7 @@
 
     // Test: qCoordsNormalization() [OK]
     printf("---Testing the qCoordsNormalization()-------------\n");
-    qCoordsNormalization(resizedW, resizedH, qCoords, xCentCoord, yCentCoord);
+    // qCoordsNormalization(resizedW, resizedH, qCoords, xCentCoord, yCentCoord);
     printf(
         "qCoords[0].x[0] = %f, qCoords[0].x[1] = %f, qCoords[0].x[2] = %f, "
         "qCoords[0].x[3] = %f\n",
@@ -289,7 +289,7 @@
 
     // Test: pCoordsDenormalization() [OK]
     printf("---Testing the pCoordsDenormalization()---------\n");
-    pCoordsDenormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
+    // pCoordsDenormalization(resizedW, resizedH, pCoords, xCentCoord, yCentCoord);
     printf("pCoords[0].x = %f\n", pCoords[0].x);
     printf("pCoords[0].y = %f\n", pCoords[0].y);
     printf("pCoords[last].x = %f\n", pCoords[lastIndex].x);

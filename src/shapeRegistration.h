@@ -189,7 +189,7 @@ void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
  *  \return nothing
  */
 void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
-                          float yCentCoord);
+                          float yCentCoord, float &normXFactor, float &normYFactor);
 
 /** normalize the quad coordinates for each pixel
  *  \param[in] w                  width of the image
@@ -201,7 +201,7 @@ void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
  *  \return nothing
  */
 void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
-                          float yCentCoord);
+                          float yCentCoord, float &normXFactor, float &normYFactor);
 
 /** inverse normalization of the image coordinates
  *  \param[in] w                  width of the image
@@ -243,6 +243,7 @@ void objectiveFunction(float *observationImg, float *templateImg,
                         double *normalization, TPSParams &tpsParams,
                         QuadCoords *qTemplate, PixelCoords *pTemplate,
                         PixelCoords *pObservation, int rt_w, int rt_h,
+                        float t_sx, float t_sy, float o_sx, float o_sy,
                         double *residual);
 
 /** thin plate spline for pixel coordinates

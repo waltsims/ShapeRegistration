@@ -234,10 +234,13 @@ int main(int argc, char **argv) {
 	printf("xCentTemplate = %f, yCentTemplate = %f\n", xCentTemplate, yCentTemplate);
   QuadCoords *qTemplate = new QuadCoords[rt_w * rt_h];
   setQuadCoords(qTemplate, rt_w, rt_h);
-  qCoordsNormalization(rt_w, rt_h, qTemplate, xCentTemplate, yCentTemplate);
+	float t_sx = 1, t_sy = 1; // Normalisation factors
+  qCoordsNormalization(rt_w, rt_h, qTemplate, xCentTemplate, yCentTemplate, t_sx, t_sy);
   PixelCoords *pTemplate = new PixelCoords[rt_w * rt_h];
   setPixelCoords(pTemplate, rt_w, rt_h);
-  pCoordsNormalisation(rt_w, rt_h, pTemplate, xCentTemplate, yCentTemplate);
+  pCoordsNormalisation(rt_w, rt_h, pTemplate, xCentTemplate, yCentTemplate, t_sx, t_sy);
+	printf("t_sx = %f, t_sy = %f\n", t_sx, t_sy);
+	printf("detN1 = %f\n", t_sx*t_sy);
 
   // TPS transformation parameters
   TPSParams tpsParams;
@@ -249,7 +252,10 @@ int main(int argc, char **argv) {
 	printf("xCentObservation = %f, yCentObservation = %f\n", xCentObservation, yCentObservation);
   PixelCoords *pResizedObservation = new PixelCoords[ro_w * ro_h];
   setPixelCoords(pResizedObservation, ro_w, ro_h);
-	pCoordsNormalisation(ro_w, ro_h, pResizedObservation, xCentObservation, yCentObservation);
+	float o_sx = 1, o_sy = 1; // Normalisation factors
+	pCoordsNormalisation(ro_w, ro_h, pResizedObservation, xCentObservation, yCentObservation, o_sx, o_sy);
+	printf("o_sx = %f, o_sy = %f\n", o_sx, o_sy);
+	printf("detN2 = %f\n", o_sx*o_sy);
 
 
   /*transfer(resizedTemplate, pResizedObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,*/
@@ -295,9 +301,13 @@ int main(int argc, char **argv) {
 	// 2 * rt_w * rt_h, pTemplate
 	// 8 * rt_w * rt_h, qTemplate
 	// 2 * rt_w * rt_h, pObservation
+	// 1,								t_sx,
+	// 1,								t_sy,
+	// 1,								o_sx
+	// 1,								o_sy
 
 	int sizeData = (4) + (rt_w * rt_h) + (ro_w * ro_h) + (81) + (2 * rt_w * rt_h)
-							 + (8 * rt_w * rt_h) + (2 * ro_w * ro_h);
+							 + (8 * rt_w * rt_h) + (2 * ro_w * ro_h) + (4);
 	float *data = new float[sizeData];
 	// current writing position in the data array
 	int offset = 0;
@@ -351,6 +361,15 @@ int main(int argc, char **argv) {
     data[offset + 2*i+1] = pResizedObservation[i].y;
   }
   offset += 2 * ro_w * ro_h;
+	// Normalisation factors of the template
+	data[offset    ] = t_sx;
+	data[offset + 1] = t_sy;
+	offset += 2;
+	// Normalisation factors of the observation
+	data[offset    ] = o_sx;
+	data[offset + 1] = o_sy;
+	offset += 2;
+
 	// Configuration parameters for the lmmin()
 	// Number of equations
 	int m_dat = 87; // TODO: add the 6 extra equations
@@ -359,6 +378,17 @@ int main(int argc, char **argv) {
 
 	// Call the lmmin() using the wrapper for the objective function
 	lmmin( sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status );
+
+	// double residual[87] = {};
+	// objectiveFunction(resizedObservation, resizedTemplate, ro_w, ro_h,
+  //                   normFactor, tpsParams, qTemplate, pTemplate,
+  //                   pResizedObservation, rt_w, rt_h, residual);
+
+
+	// objectiveFunction(observationImg, templateImg, ro_w, ro_h,
+  //                   normalization, tpsParams, qTemplate, pTemplate,
+  //                   pObservation, rt_w, rt_h, residual);
+
 
   //stop timer here
   timer.end();

@@ -30,9 +30,16 @@ Once the Makefile is generated, you can build the project:
 ```sh
     make
 ```
+## Exicution
 
+The exicution requires passing two images, the template and the observation to be matched.  This can be done
+with the following flags.
 
-##Style Guide
+```sh 
+-t [template image] -o [observation image]
+```
+
+## Style Guide
 
 For development you should install `clang`. We use `clang`'s `clang-format` to keep our coding style consistent.
 
@@ -46,7 +53,7 @@ files. Alternatively, try one of the integrations of `clang-format` into various
 editors/IDEs. ( comming soon )
 
 
-##Aknowledgements
+## Aknowledgements
 Our code was created using the framework provided in the course as a starting point.
 
 Much of this document was based on the knowledge passed on by @cqql.

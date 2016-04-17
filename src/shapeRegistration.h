@@ -38,97 +38,74 @@ struct TPSParams {
   /** affine parameters: a
    *  size: 2 X 3
    */
-  float affineParam[2 * 3] = {180.750570973114,
-	 						  -16.6979777565757,
-                              78.2371003511860,
-							  26.8971153700975,
-                              230.948397768629,
-							  94.8716771317028};
+  float affineParam[2 * 3] = {1, 0, 0, 0, 1, 0};
   /** local coefficient: w
    *  size: 2 X degree of moment^2
    */
-  float localCoeff[2 * DIM_C_REF * DIM_C_REF] = {
-							  43.4336100367918,
-							  -254.664478125986,
-							  164.260796260200,
-							  209.676277829085,
-							  -95.4890564425583,
-							  74.0543824971685,
-							  -28.7045465000123,
-							  24.3081842513946,
-							  12.0776119309275,
-							  -110.537185437210,
-							  -31.4277765118847,
-							  -12.6475496029205,
-							  -6.28490818780619,
-							  -17.9631170829272,
-							  -49.2124002833565,
-							  4.55138433535774,
-							  -17.8818978065982,
-							  9.33577702465229,
-							  -6.71131995853042,
-							  63.3149271119866,
-							  11.6553014436196,
-							  -96.3055081066777,
-							  159.231246073828,
-							  -77.2364773866945,
-							  29.1667360924734,
-							  -114.139336032721,
-							  137.564797025932,
-							  9.98432048986034,
-							  -79.6383549015170,
-							  -40.5321424871105,
-							  -170.186873110339,
-							  -6.97667497242567,
-							  5.22216368408785,
-							  3.13977210362321,
-							  113.586062434194,
-							  238.165062497888,
-							  49.8182500014783,
-							  5.69215060608789,
-							  -9.06319782846551,
-							  -3.95545094132852,
-							  158.306011440768,
-							  17.3093272722814,
-							  -1.07041222178313,
-							  -29.4179219657275,
-							  -193.750653161620,
-							  -204.879616315085,
-							  -45.7180638714529,
-							  14.9243166793925,
-							  -39.5796905616838,
-							  185.196153840653};
+  float localCoeff[2 * DIM_C_REF * DIM_C_REF] = {};
   /** conrol points: c
    *  size: 2 X degree of moment^2
    *
    *  25 total points odered x then y dimensions
    */
   float ctrlP[2 * DIM_C_REF * DIM_C_REF] = {
-	  //xx
+      // xx
       -0.333333333333333,
-	  -0.333333333333333, -0.333333333333333,
-      -0.333333333333333, -0.333333333333333, -0.166666666666667,
-      -0.166666666666667, -0.166666666666667, -0.166666666666667,
-      -0.166666666666667, 0, 0, 0, 0, 0, 0.166666666666667, 0.166666666666667,
-      0.166666666666667, 0.166666666666667, 0.166666666666667,
-      0.333333333333333, 0.333333333333333, 0.333333333333333,
-      0.333333333333333, 0.333333333333333,
+      -0.333333333333333,
+      -0.333333333333333,
+      -0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      -0.166666666666667,
+      -0.166666666666667,
+      -0.166666666666667,
+      -0.166666666666667,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.166666666666667,
+      0.166666666666667,
+      0.166666666666667,
+      0.166666666666667,
+      0.166666666666667,
+      0.333333333333333,
+      0.333333333333333,
+      0.333333333333333,
+      0.333333333333333,
+      0.333333333333333,
 
-	  -0.333333333333333,
-      -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
-      -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
-      0.333333333333333, -0.333333333333333, -0.166666666666667, 0,
-      0.166666666666667, 0.333333333333333, -0.333333333333333,
-      -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
-      -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
+      0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
+      0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
+      0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
+      0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
       0.333333333333333};
 };
-
 
 /**
  *
  */
-
 
 /** structure to save quad coordinates of each pixel
  *
@@ -220,6 +197,28 @@ void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
 void addMargins(float *resizedimg, int resizedW, int resizedH, float *imgOut,
                 int w, int h, Margins &margins);
 
+/** get the number of forground pixels in the image
+ * \param[in] imgIn 			image data (binary)
+ * \param[in] w					width of image
+ * \param[in] h					height of image
+ *
+ * \return number if foreground pixels
+ */
+int getNumForeground(float *imgIn, int w, int h);
+/** get coords of foreground image
+ *
+ *\ param[in] imgIn				input image data
+ *  \param[in] w                  width of the image
+ *  \param[in] h                  height of the image
+ *  \param[in, out] pForeground   coords of foreground pixels
+ *
+ *  \return nothing
+ *
+ *
+ */
+
+void getCoordForeground(float *imgIn, PixelCoords *pImgIn, int w, int h,
+                        PixelCoords *pForeground);
 /** set the center of mass of the image
  *  \param[in] imgIn              input image
  *  \param[in] w                  width of the image
@@ -242,7 +241,8 @@ void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
  *  \return nothing
  */
 void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
-                          float yCentCoord);
+                          float yCentCoord, float &normXFactor,
+                          float &normYFactor);
 
 /** normalize the quad coordinates for each pixel
  *  \param[in] w                  width of the image
@@ -254,7 +254,8 @@ void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
  *  \return nothing
  */
 void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
-                          float yCentCoord);
+                          float yCentCoord, float &normXFactor,
+                          float &normYFactor);
 
 /** inverse normalization of the image coordinates
  *  \param[in] w                  width of the image
@@ -279,17 +280,27 @@ void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
  *  \note pseudo code of geometric
  * moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
  */
-void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt, int mmtDegree);
+void imageMoment(PixelCoords pCoords, int lenForeground, float *mmt,
+                 int mmtDegree);
+
+/** wrapper for the objective function for the lmmin()
+ *  The signature is in the form that lmmin expects.
+ *  See http://apps.jcns.fz-juelich.de/man/lmmin.html
+ *  as well as the example 3rdparty/lmfit-6.1/demo/nonlin1.c
+ */
+void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
+                           double *fvec, int *userbreak);
 
 /** objective function for LM solver
  *
  */
-void objectiveFunction(float *observationImg, float *templateImg,
-                        float *jacobi, int ro_w, int ro_h,
-                        double *normalization, TPSParams &tpsParams,
-                        QuadCoords *qTemplate, PixelCoords *pTemplate,
-                        PixelCoords *pObservation, int rt_w, int rt_h,
-                        float *residual);
+void objectiveFunction(float *observationImg, float *templateImg, int ro_w,
+                       int ro_h, double *normalization, TPSParams &tpsParams,
+                       QuadCoords *qTemplate, PixelCoords *pTemplate,
+                       PixelCoords *pObservation, int rt_w, int rt_h,
+                       float t_sx, float t_sy, float o_sx, float o_sy,
+                       double *residual);
+
 /** thin plate spline for pixel coordinates
  *  \param[in] imgIn           input image
  *  \param[in] w               width of the image
@@ -302,7 +313,7 @@ void objectiveFunction(float *observationImg, float *templateImg,
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams,
+void pTPS(int lenForeground, PixelCoords *pCoords, TPSParams &tpsParams,
           int mmtDegree);
 
 /** radial basis approximation
@@ -343,13 +354,23 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords, TPSParams &tpsParams,
-                   int mmtDegree);
-/** Discription to come
+void jacobianTrans(int lenForeground, float *jacobi, PixelCoords *pCoords,
+                   TPSParams &tpsParams, int mmtDegree);
+
+/** transfer data from transformed quadCoords to PixelCoords based image
+ * \param[in] imageIn 			binary data for Template image
+ * \param[in] qCoords			transformed qCoords of template
+ * \param[in] i_w				input width
+ * \param[in] i_h				input height
+ * \param[in, out] imgOut		image data to be written
+ * \param[in] pCoords			pixel position data
+ * \param[in] o_w				output width
+ * \param[in] o_h				output height
+ *
  *
  * */
-void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_w,
-              int t_h, int o_w, int o_h, float *imgOut);
+void transfer(float *imgOut, PixelCoords *pCoords, int o_w, int o_h,
+              float *imgIn, QuadCoords *qCoords, int i_w, int i_h);
 
 /** check whether a point is inside polygon or not
  *  \param[in] nVert       Number of vertices in the polygon. Whether to repeat

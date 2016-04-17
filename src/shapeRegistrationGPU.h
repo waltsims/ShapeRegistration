@@ -226,4 +226,23 @@ void objectiveFunctionGPU(float *observationImg, float *templateImg,
                           PixelCoords *pObservation, int rt_w, int rt_h,
                           float *residual);
 
+/** wrapper for the objective function for the lmmin()
+ *  The signature is in the form that lmmin expects.
+ *  See http://apps.jcns.fz-juelich.de/man/lmmin.html
+ *  as well as the example 3rdparty/lmfit-6.1/demo/nonlin1.c
+ */
+void lmminObjectiveWrapperGPU(const double *par, const int m_dat, const void *data, double *fvec, int *userbreak);
+
+/** objective function for LM solver
+ *
+ */
+void objectiveFunctionGPU(float *observationImg, float *templateImg,
+                        int ro_w, int ro_h,
+                        double *normalization, TPSParams &tpsParams,
+                        QuadCoords *qTemplate, PixelCoords *pTemplate,
+                        PixelCoords *pObservation, int rt_w, int rt_h,
+                        float t_sx, float t_sy, float o_sx, float o_sy,
+                        double *residual);
+
+
 #endif  // SHAPEREGISTRATION_H

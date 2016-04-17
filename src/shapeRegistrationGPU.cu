@@ -875,55 +875,196 @@ void transferGPU(float *h_imgIn, PixelCoords *h_pCoords, QuadCoords *h_qCoords,
   cudaFree(d_imgOut);
   CUDA_CHECK;
 }
-/*
-__global__ void objectiveFunctionGPU(
-    float *d_observationImg, float *d_templateImg, float *d_jacobi, int d_ow,
-    int d_oh, double *d_normalisation, TPSParams d_tpsParams,
-    QuadCoords *d_qTemplate, PixelCoords *d_pTemplate,
-    PixelCoords *d_pObservation, int d_tw, int rt_h, float *d_residual) {
-  residual[index] =
-      (sumObsMoment[index] - sumTempMoment[index]) / normalisation[index];
+
+
+void lmminObjectiveWrapperGPU(const double *par, const int m_dat, const void *data, double *residual, int *userbreak) {
+
+  // The affineParam and the localCoeff are our free variables ("parameters") and
+  // need to be packed in an array in order to use the lmmin(). We pass
+  // them as *par, but our functions are implemented to use the TPSParams
+  // structure. We do the unpacking here.
+  TPSParams tpsParams;
+
+  for (int i = 0; i < 6; i++) {
+    tpsParams.affineParam[i] = par[i];
+  }
+
+  // printf("affineParam[0] = %f, [1] = %f, [2] = %f\n", tpsParams.affineParam[0], tpsParams.affineParam[1], tpsParams.affineParam[2]);
+  // printf("affineParam[3] = %f, [4] = %f, [5] = %f\n", tpsParams.affineParam[3], tpsParams.affineParam[4], tpsParams.affineParam[5]);
+
+  for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
+    tpsParams.localCoeff[i] = par[i+6];
+    // printf("localCoeff[i] = %f\n", tpsParams.localCoeff[i]);
+  }
+
+  // printf("tpsParams affine first: %f, last: %f\n", tpsParams.affineParam[0], tpsParams.affineParam[5]);
+  // printf("tpsParams localC first: %f, last: %f\n", tpsParams.localCoeff[0], tpsParams.localCoeff[2 * DIM_C_REF * DIM_C_REF - 1]);
+
+  // Cast the void pointer data to a float pointer dataF
+  const float *dataF = static_cast<const float *>(data);
+
+  // We also need to pack/unpack the non-free parameters ("data") of the objective function
+  // current reading position in the data array
+  int offset = 0;
+
+  // Read first the sizes needed to allocate the included arrays
+  // int rt_w = static_cast<int>(data[offset]);
+  int rt_w = dataF[offset    ];
+  int rt_h = dataF[offset + 1];
+  int ro_w = dataF[offset + 2];
+  int ro_h = dataF[offset + 3];
+  // We read 4 elements, move the reading position 4 places
+  offset += 4;
+
+  // printf("rt_w = %d, rt_h = %d, ro_w = %d, ro_h = %d\n", rt_w, rt_h, ro_w, ro_h);
+
+  // Template image array
+  float *templateImg = new float[rt_w * rt_h];
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    templateImg[i] = dataF[offset + i];
+  }
+  offset += rt_w * rt_h;
+
+  // printf("templateImg first = %f, last = %f\n", templateImg[0], templateImg[rt_w * rt_h - 1]);
+
+  // Observation image array
+  float *observationImg = new float[ro_w * ro_h];
+  for (int i = 0; i < ro_w * ro_h; i++) {
+    observationImg[i] = dataF[offset + i];
+  }
+  offset += ro_w * ro_h;
+
+  // printf("observationImg first = %f, last = %f\n", observationImg[0], observationImg[rt_w * rt_h - 1]);
+
+  // Normalization factors (N_i for eq.22)
+  double normalization[81]; // TODO: Make this double everywhere
+  for (int i = 0; i < 81; i++) {
+    normalization[i] = dataF[offset + i];
+  }
+  offset += 81;
+
+  // printf("normalization first = %f, last = %f\n", normalization[0], normalization[80]);
+
+  // Pixel coordinates of the template
+  // Every element is a struct with two fields: x, y
+  PixelCoords *pTemplate = new PixelCoords[rt_w * rt_h];
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    pTemplate[i].x = dataF[offset + 2*i];
+    pTemplate[i].y = dataF[offset + 2*i+1];
+  }
+  offset += 2 * rt_w * rt_h;
+
+  // printf("pTemplate first.x = %f, first.y = %f, last.x = %f, last.y = %f\n", pTemplate[0].x, pTemplate[0].y, pTemplate[rt_w * rt_h-1].x, pTemplate[rt_w * rt_h-1].y);
+
+  // Quad coordinates of the template
+  // Every element has two fields (x,y) that are arrays of four elements (corners)
+  QuadCoords *qTemplate = new QuadCoords[rt_w * rt_h];
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    qTemplate[i].x[0] = dataF[offset + 8*i  ];
+    qTemplate[i].y[0] = dataF[offset + 8*i+1];
+    qTemplate[i].x[1] = dataF[offset + 8*i+2];
+    qTemplate[i].y[1] = dataF[offset + 8*i+3];
+    qTemplate[i].x[2] = dataF[offset + 8*i+4];
+    qTemplate[i].y[2] = dataF[offset + 8*i+5];
+    qTemplate[i].x[3] = dataF[offset + 8*i+6];
+    qTemplate[i].y[3] = dataF[offset + 8*i+7];
+  }
+  offset += 8 * rt_w * rt_h;
+
+  // printf("qTemplate first.x[0] = %f, first.y[3] = %f, last.x[0] = %f, last.y[3] = %f\n", qTemplate[0].x[0], qTemplate[0].y[3], qTemplate[rt_w * rt_h-1].x[0], qTemplate[rt_w * rt_h-1].y[3]);
+
+  // Pixel coordinates of the observation
+  // Every element is a struct with two fields: x, y
+  PixelCoords *pObservation = new PixelCoords[ro_w * ro_h];
+  for (int i = 0; i < ro_w * ro_h; i++) {
+    pObservation[i].x = dataF[offset + 2*i];
+    pObservation[i].y = dataF[offset + 2*i+1];
+  }
+  offset += 2 * ro_w * ro_h;
+
+  // Normalisation factors of the template
+  float t_sx, t_sy;
+  t_sx = dataF[offset    ];
+  t_sy = dataF[offset + 1];
+  offset += 2;
+
+  // Normalisation factors of the observation
+  float o_sx, o_sy;
+  o_sx = dataF[offset    ];
+  o_sy = dataF[offset + 1];
+  offset += 2;
+
+  // printf("pObservation first.x = %f, last.y = %f\n", pObservation[0].x, pObservation[ro_w * ro_h -1].y);
+
+  // Array of the residuals of the equations
+  // TODO: Add also the 6 extra equations!
+  // printf("residual first = %f, last = %f\n", residual[0], residual[80]);
+
+  // Call the objective function with the unpacked arguments
+  objectiveFunction(observationImg, templateImg, ro_w, ro_h,
+                    normalization, tpsParams, qTemplate, pTemplate,
+                    pObservation, rt_w, rt_h, t_sx, t_sy, o_sx, o_sy, residual);
+
+  // printf("residual first = %f, last = %f\n", residual[0], residual[80]);
+
+  // Delete the allocated pointers
+  delete templateImg;
+  delete observationImg;
+  delete pTemplate;
+  delete qTemplate;
+
+  return;
 }
 
+
 void objectiveFunctionGPU(float *observationImg, float *templateImg,
-                          float *jacobi, int ro_w, int ro_h,
-                          double *normalisation, TPSParams &tpsParams,
-                          QuadCoords *qTemplate, PixelCoords *pTemplate,
-                          PixelCoords *pObservation, int rt_w, int rt_h,
-                          float *residual) {
+                        int ro_w, int ro_h,
+                        double *normalisation, TPSParams &tpsParams,
+                        QuadCoords *qTemplate, PixelCoords *pTemplate,
+                        PixelCoords *pObservation, int rt_w, int rt_h,
+                        float t_sx, float t_sy, float o_sx, float o_sy,
+                        double *residual) {
+  // printf("called!\n");
+  static unsigned int call_count = 0;
+  printf("call count = %d\n", call_count++);
   int momentDeg = 9;
 
-  float *observationMoment = new float[momentDeg * momentDeg * ro_w * ro_h];
-  float *templateMoment = new float[momentDeg * momentDeg * rt_w * rt_h];
+  float resNorm = 0;
 
-  float sumTempMoment[momentDeg * momentDeg];
-  float sumObsMoment[momentDeg * momentDeg];
-  // init moment array
-  for (int init = 0; init < momentDeg * momentDeg; init++) {
-    sumObsMoment[init] = (float)0;
+  float * observationMoment = new float[momentDeg * momentDeg * ro_w * ro_h];
+  float * templateMoment= new float[momentDeg * momentDeg * rt_w * rt_h];
+
+
+  float sumTempMoment[momentDeg * momentDeg] ;
+  float sumObsMoment[momentDeg * momentDeg] ;
+  for ( int init = 0; init < momentDeg * momentDeg; init ++){
+    sumObsMoment[init] =(float)0;
     sumTempMoment[init] = (float)0;
   }
 
-  qTPSKernel << <grid, block>>> (d_tw, d_th, d_qTemplate, d_tpsParams, d_cDim);
-
-  transferKernel << <grid, block>>> (d_templateImg, d_pObservation, d_qTemplate,
-                                     d_ow, d_th, d_ow, d_oh, d_imgOut);
-
-  // TODO how and when to allocate memory for observation moments and moment
-  // deg.
-  imageMomentKernel << <grid, block>>> (d_observationImg, d_pObservation, d_ow,
-                                        d_oh, d_observationMoment, d_mmtDegree);
-  imageMomentKernel << <grid, block>>>
-      (d_templateImg, d_pTemplate, d_tw, d_th, d_templateMoment, d_mmtDegree);
-
-  // TODO call jacobian kernel here
-
-  // get jacobian of current tps params
+  // get the jacobian at each pixel with the current tps params
+  float jacobi[rt_w * rt_h];
   jacobianTrans(rt_w, rt_h, jacobi, pTemplate, tpsParams, DIM_C_REF);
-  // get determinant of Jacobian
+  // printf("jacobi[0] = %f, jacobi[100] = %f, jacobi[last] = %f\n", jacobi[0], jacobi[100], jacobi[rt_w * rt_h - 1]);
 
-  // TODO two reduces needed here
+  // calculate tps transformation of template
+  pTPS(rt_w, rt_h, pTemplate, tpsParams, DIM_C_REF);
+
+  // get the moments of the TPS transformation of the template
+  imageMoment(templateImg, pTemplate, rt_w, rt_h, templateMoment, momentDeg);
+  // get the moments of the observation
+  imageMoment(observationImg, pObservation, ro_w, ro_h, observationMoment, momentDeg);
+
+  // Determinant of the normFactor of the normalized template image
+  float detN1 = 0;
+  detN1 = t_sx * t_sy;
+  // Determinant of the normFactor of the normalized observation image
+  float detN2 = 0;
+  detN2 = o_sx * o_sy;
+
+  // Sum the moments of each degree for each pixel of the two images
   for (int index = 0; index < momentDeg * momentDeg; index++) {
+    // Transformed template
     for (int y = 0; y < rt_h; y++) {
       for (int x = 0; x < rt_w; x++) {
         sumTempMoment[index] +=
@@ -931,17 +1072,53 @@ void objectiveFunctionGPU(float *observationImg, float *templateImg,
             jacobi[x + rt_w * y];
       }
     }
+    sumTempMoment[index] /= detN2;
 
+    // Observation
     for (int y = 0; y < ro_h; y++) {
       for (int x = 0; x < ro_w; x++) {
         sumObsMoment[index] +=
             observationMoment[index * (ro_h * ro_w) + (x + ro_w * y)];
       }
     }
+    sumObsMoment[index] /= detN1;
 
+    // Compute the residual as the difference between the LHS and the RHS of eq.22
     residual[index] =
         (sumObsMoment[index] - sumTempMoment[index]) / normalisation[index];
+
+    // Residual norm^2 (only for output purposes)
+    resNorm += residual[index] * residual[index];
   }
+
+  // First restriction of eq.16 (2 equations)
+  int index = momentDeg * momentDeg;
+  residual[index] = 0;
+  residual[index+1] = 0;
+  int K = DIM_C_REF*DIM_C_REF;
+  for (int k = 0; k < K; k++) {
+    residual[index]   += tpsParams.localCoeff[k];
+    residual[index+1] += tpsParams.localCoeff[k + K];
+  }
+  resNorm += residual[index] * residual[index];
+  resNorm += residual[index+1] * residual[index+1];
+
+  index += 2;
+  // Second restriction of eq.16 (4 equations)
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      residual[index + (i + 2*j)] = 0;
+      for (int k = 0; k < K; k++) {
+        residual[index + (i + 2*j)] += tpsParams.ctrlP[k + j*K] * tpsParams.localCoeff[k + i*K];
+      }
+      resNorm += residual[index + (i + 2*j)] * residual[index + (i + 2*j)];
+    }
+  }
+
+  // Print the residual norm
+  resNorm = sqrt(resNorm);
+  printf("Residual norm = %f\n", resNorm);
+
   delete[] observationMoment;
   delete[] templateMoment;
-};*/
+};

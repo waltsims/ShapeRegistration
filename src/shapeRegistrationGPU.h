@@ -219,11 +219,15 @@ void transferGPU(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords,
  */
 bool pointInPolygonGPU(int nVert, float *vertX, float *vertY, float testX,
                        float testY);
+
+void lmminObjectiveWrapperGPU(const double *par, const int m_dat, const void *data, double *residual, int *userbreak);
+
 void objectiveFunctionGPU(float *observationImg, float *templateImg,
-                          float *jacobi, int ro_w, int ro_h,
-                          double *normalisation, TPSParams &tpsParams,
-                          QuadCoords *qTemplate, PixelCoords *pTemplate,
-                          PixelCoords *pObservation, int rt_w, int rt_h,
-                          float *residual);
+                        int ro_w, int ro_h,
+                        double *normalisation, TPSParams &tpsParams,
+                        QuadCoords *qTemplate, PixelCoords *pTemplate,
+                        PixelCoords *pObservation, int rt_w, int rt_h,
+                        float t_sx, float t_sy, float o_sx, float o_sy,
+                        double *residual) ;
 
 #endif  // SHAPEREGISTRATION_H

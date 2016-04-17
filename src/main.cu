@@ -8,97 +8,96 @@
 // ###
 // ###
 
-#include "helper.h"
-#include "shapeRegistration.h"
-#include "lmmin.h"
-#include "testing.h"
-#include <iostream>
 #include <stdio.h>
 #include <cstring>
+#include <iostream>
+#include "helper.h"
+#include "lmmin.h"
+#include "shapeRegistration.h"
 
 #define DIM_C_REF 5
 
-double  normFactor[81] = {1.5707963267949,
-					  0.471404520791033,
-					  0.196349540849362,
-					  0.0942809041582067,
-					  0.0490873852123405,
-					  0.026937401188059,
-					  0.0153398078788564,
-					  0.00897913372935302,
-					  0.00536893275759974,
-					  0.471404520791033,
-					  0.125,
-					  0.0471404520791033,
-					  0.0208333333333333,
-					  0.0101015254455221,
-					  0.00520833333333333,
-					  0.00280597929042281,
-					  0.0015625,
-					  0.00089281159240726,
-					  0.196349540849362,
-					  0.0471404520791033,
-					  0.0163624617374468,
-					  0.00673435029701476,
-					  0.00306796157577128,
-					  0.00149652228822551,
-					  0.00076699039394282,
-					  0.000408142442243319,
-					  0.000223705531566656,
-					  0.0942809041582067,
-					  0.0208333333333333,
-					  0.00673435029701476,
-					  0.00260416666666667,
-					  0.00112239171616913,
-					  0.000520833333333333,
-					  0.000255089026402074,
-					  0.000130208333333333,
-					  0.0000686778148005585,
-					  0.0490873852123405,
-					  0.0101015254455221,
-					  0.00306796157577128,
-					  0.00112239171616913,
-					  0.000460194236365692,
-					  0.000204071221121659,
-					  0.0000958737992428525,
-					  0.000047093358720383,
-					  0.0000239684498107131,
-					  0.0269374011880590,
-					  0.00520833333333333,
-					  0.00149652228822551,
-					  0.000520833333333333,
-					  0.000204071221121659,
-					  0.0000868055555555556,
-					  0.0000392444656003192,
-					  0.0000186011904761905,
-					  0.0000091570419734078,
-					  0.0153398078788564,
-					  0.00280597929042281,
-					  0.00076699039394282,
-					  0.000255089026402074,
-					  0.0000958737992428525,
-					  0.0000392444656003192,
-					  0.0000171203212933665,
-					  0.00000784889312006383,
-					  0.00000374507028292392,
-					  0.00897913372935302,
-					  0.0015625,
-					  0.000408142442243319,
-					  0.000130208333333333,
-					  0.0000470933587203830,
-					  0.0000186011904761905,
-					  0.00000784889312006383,
-					  0.00000348772321428571,
-					  0.00000161594858354255,
-					  0.00536893275759974,
-					  0.00089281159240726,
-					  0.000223705531566656,
-					  0.0000686778148005585,
-					  0.0000239684498107131,
-					  0.0000091570419734078,
-					  0.00000374507028292392,
-					  0.00000161594858354255,
-					  0.000000728208110568542};
+double normFactor[81] = {1.5707963267949,
+                         0.471404520791033,
+                         0.196349540849362,
+                         0.0942809041582067,
+                         0.0490873852123405,
+                         0.026937401188059,
+                         0.0153398078788564,
+                         0.00897913372935302,
+                         0.00536893275759974,
+                         0.471404520791033,
+                         0.125,
+                         0.0471404520791033,
+                         0.0208333333333333,
+                         0.0101015254455221,
+                         0.00520833333333333,
+                         0.00280597929042281,
+                         0.0015625,
+                         0.00089281159240726,
+                         0.196349540849362,
+                         0.0471404520791033,
+                         0.0163624617374468,
+                         0.00673435029701476,
+                         0.00306796157577128,
+                         0.00149652228822551,
+                         0.00076699039394282,
+                         0.000408142442243319,
+                         0.000223705531566656,
+                         0.0942809041582067,
+                         0.0208333333333333,
+                         0.00673435029701476,
+                         0.00260416666666667,
+                         0.00112239171616913,
+                         0.000520833333333333,
+                         0.000255089026402074,
+                         0.000130208333333333,
+                         0.0000686778148005585,
+                         0.0490873852123405,
+                         0.0101015254455221,
+                         0.00306796157577128,
+                         0.00112239171616913,
+                         0.000460194236365692,
+                         0.000204071221121659,
+                         0.0000958737992428525,
+                         0.000047093358720383,
+                         0.0000239684498107131,
+                         0.0269374011880590,
+                         0.00520833333333333,
+                         0.00149652228822551,
+                         0.000520833333333333,
+                         0.000204071221121659,
+                         0.0000868055555555556,
+                         0.0000392444656003192,
+                         0.0000186011904761905,
+                         0.0000091570419734078,
+                         0.0153398078788564,
+                         0.00280597929042281,
+                         0.00076699039394282,
+                         0.000255089026402074,
+                         0.0000958737992428525,
+                         0.0000392444656003192,
+                         0.0000171203212933665,
+                         0.00000784889312006383,
+                         0.00000374507028292392,
+                         0.00897913372935302,
+                         0.0015625,
+                         0.000408142442243319,
+                         0.000130208333333333,
+                         0.0000470933587203830,
+                         0.0000186011904761905,
+                         0.00000784889312006383,
+                         0.00000348772321428571,
+                         0.00000161594858354255,
+                         0.00536893275759974,
+                         0.00089281159240726,
+                         0.000223705531566656,
+                         0.0000686778148005585,
+                         0.0000239684498107131,
+                         0.0000091570419734078,
+                         0.00000374507028292392,
+                         0.00000161594858354255,
+                         0.000000728208110568542};
 using namespace std;
 
 int main(int argc, char **argv) {
@@ -135,13 +134,14 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-	// maximum number of iterations for the Levenberg-Marquardt (patience)
-	int patience = 25;
-	getParam("l", patience, argc, argv);
-	if (patience < 1) {
-		cerr << "ERROR: the patience for the Levenberg-Marquardt must be >=1" << endl;
-		return 1;
-	}
+  // maximum number of iterations for the Levenberg-Marquardt (patience)
+  int patience = 25;
+  getParam("l", patience, argc, argv);
+  if (patience < 1) {
+    cerr << "ERROR: the patience for the Levenberg-Marquardt must be >=1"
+         << endl;
+    return 1;
+  }
 
   // Load the input image using opencv (load as "grayscale", since we are
   // working only with binary shapes of single channel)
@@ -218,244 +218,254 @@ int main(int argc, char **argv) {
   float xCentTemplate;
   float yCentTemplate;
 
-  //normalized quadCoords of Template
+  // normalized quadCoords of Template
   centerOfMass(resizedTemplate, rt_w, rt_h, xCentTemplate, yCentTemplate);
 
   QuadCoords *qTemplate = new QuadCoords[rt_w * rt_h];
   setQuadCoords(qTemplate, rt_w, rt_h);
-	float t_sx = 1, t_sy = 1; // Normalisation factors
-  qCoordsNormalization(rt_w, rt_h, qTemplate, xCentTemplate, yCentTemplate, t_sx, t_sy);
+  float t_sx = 1, t_sy = 1;  // Normalisation factors
+  qCoordsNormalization(rt_w, rt_h, qTemplate, xCentTemplate, yCentTemplate,
+                       t_sx, t_sy);
   PixelCoords *pTemplate = new PixelCoords[rt_w * rt_h];
   setPixelCoords(pTemplate, rt_w, rt_h);
-  pCoordsNormalisation(rt_w, rt_h, pTemplate, xCentTemplate, yCentTemplate, t_sx, t_sy);
+  pCoordsNormalisation(rt_w, rt_h, pTemplate, xCentTemplate, yCentTemplate,
+                       t_sx, t_sy);
 
   // TPS transformation parameters
   TPSParams tpsParams;
 
-	// normalized pCoords of the Observation
-	float xCentObservation;
-	float yCentObservation;
-	centerOfMass(resizedObservation, ro_w, ro_h, xCentObservation, yCentObservation);
+  // normalized pCoords of the Observation
+  float xCentObservation;
+  float yCentObservation;
+  centerOfMass(resizedObservation, ro_w, ro_h, xCentObservation,
+               yCentObservation);
 
   PixelCoords *pResizedObservation = new PixelCoords[ro_w * ro_h];
   setPixelCoords(pResizedObservation, ro_w, ro_h);
-	float o_sx = 1, o_sy = 1; // Normalisation factors
-	pCoordsNormalisation(ro_w, ro_h, pResizedObservation, xCentObservation, yCentObservation, o_sx, o_sy);
+  float o_sx = 1, o_sy = 1;  // Normalisation factors
+  pCoordsNormalisation(ro_w, ro_h, pResizedObservation, xCentObservation,
+                       yCentObservation, o_sx, o_sy);
 
-	// Pack the parameters for the lmmin() objective function
-	int sizePar = 6 + (2 * DIM_C_REF * DIM_C_REF);
-	double *par = new double[sizePar];
-	// Pack the affineParam
-	for (int i = 0; i < 6; i++) {
-		par[i] = tpsParams.affineParam[i];
-	}
-	// Pack the localCoeff
-	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
-		par[i+6] = tpsParams.localCoeff[i];
-	}
+  // Pack the parameters for the lmmin() objective function
+  int sizePar = 6 + (2 * DIM_C_REF * DIM_C_REF);
+  double *par = new double[sizePar];
+  // Pack the affineParam
+  for (int i = 0; i < 6; i++) {
+    par[i] = tpsParams.affineParam[i];
+  }
+  // Pack the localCoeff
+  for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
+    par[i + 6] = tpsParams.localCoeff[i];
+  }
 
-	// Pack the auxiliary data for the lmmin() objective function
-	// Data format (all floats) [number of elements, name]:
-	// 1,               rt_w
-	// 1,               rt_h
-	// 1,               ro_w
-	// 1,               ro_h
-	// rt_w * rt_h,     templateImg
-	// ro_w * ro_h,     observationImg
-	// 81,              normalization
-	// 2 * rt_w * rt_h, pTemplate
-	// 8 * rt_w * rt_h, qTemplate
-	// 2 * rt_w * rt_h, pObservation
-	// 1,								t_sx,
-	// 1,								t_sy,
-	// 1,								o_sx
-	// 1,								o_sy
+  // Pack the auxiliary data for the lmmin() objective function
+  // Data format (all floats) [number of elements, name]:
+  // 1,               rt_w
+  // 1,               rt_h
+  // 1,               ro_w
+  // 1,               ro_h
+  // rt_w * rt_h,     templateImg
+  // ro_w * ro_h,     observationImg
+  // 81,              normalization
+  // 2 * rt_w * rt_h, pTemplate
+  // 8 * rt_w * rt_h, qTemplate
+  // 2 * rt_w * rt_h, pObservation
+  // 1,								t_sx,
+  // 1,								t_sy,
+  // 1,								o_sx
+  // 1,								o_sy
 
-	int sizeData = (4) + (rt_w * rt_h) + (ro_w * ro_h) + (81) + (2 * rt_w * rt_h)
-							 + (8 * rt_w * rt_h) + (2 * ro_w * ro_h) + (4);
-	float *data = new float[sizeData];
-	// current writing position in the data array
-	int offset = 0;
+  int sizeData = (4) + (rt_w * rt_h) + (ro_w * ro_h) + (81) +
+                 (2 * rt_w * rt_h) + (8 * rt_w * rt_h) + (2 * ro_w * ro_h) +
+                 (4);
+  float *data = new float[sizeData];
+  // current writing position in the data array
+  int offset = 0;
 
-	// Pack the sizes of the arrays
-	data[offset    ] = rt_w;
-	data[offset + 1] = rt_h;
-	data[offset + 2] = ro_w;
-	data[offset + 3] = ro_h;
-	// We wrote 4 elements, move the reading position 4 places
-	offset += 4;
+  // Pack the sizes of the arrays
+  data[offset] = rt_w;
+  data[offset + 1] = rt_h;
+  data[offset + 2] = ro_w;
+  data[offset + 3] = ro_h;
+  // We wrote 4 elements, move the reading position 4 places
+  offset += 4;
   // Template image array
-	for (int i = 0; i < rt_w * rt_h; i++) {
-		data[offset + i] = resizedTemplate[i];
-	}
-	offset += rt_w * rt_h;
-	// Observation image array
-	for (int i = 0; i < ro_w * ro_h; i++) {
-		data[offset + i] = resizedObservation[i];
-	}
-	offset += ro_w * ro_h;
-	// Normalization factors (N_i for eq.22)
-	for (int i = 0; i < 81; i++) {
-		data[offset + i] = normFactor[i];
-	}
-	offset += 81;
-	// Pixel coordinates of the template
-	// Every element is a struct with two fields: x, y
-	for (int i = 0; i < rt_w * rt_h; i++) {
-		data[offset + 2*i]   = pTemplate[i].x;
-		data[offset + 2*i+1] = pTemplate[i].y;
-	}
-	offset += 2 * rt_w * rt_h;
-	// Quad coordinates of the template
-	// Every element has two fields (x,y) that are arrays of four elements (corners)
-	for (int i = 0; i < rt_w * rt_h; i++) {
-		data[offset + 8*i  ] = qTemplate[i].x[0];
-		data[offset + 8*i+1] = qTemplate[i].y[0];
-		data[offset + 8*i+2] = qTemplate[i].x[1];
-		data[offset + 8*i+3] = qTemplate[i].y[1];
-		data[offset + 8*i+4] = qTemplate[i].x[2];
-		data[offset + 8*i+5] = qTemplate[i].y[2];
-		data[offset + 8*i+6] = qTemplate[i].x[3];
-		data[offset + 8*i+7] = qTemplate[i].y[3];
-	}
-	offset += 8 * rt_w * rt_h;
-	// Pixel coordinates of the observation
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    data[offset + i] = resizedTemplate[i];
+  }
+  offset += rt_w * rt_h;
+  // Observation image array
+  for (int i = 0; i < ro_w * ro_h; i++) {
+    data[offset + i] = resizedObservation[i];
+  }
+  offset += ro_w * ro_h;
+  // Normalization factors (N_i for eq.22)
+  for (int i = 0; i < 81; i++) {
+    data[offset + i] = normFactor[i];
+  }
+  offset += 81;
+  // Pixel coordinates of the template
+  // Every element is a struct with two fields: x, y
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    data[offset + 2 * i] = pTemplate[i].x;
+    data[offset + 2 * i + 1] = pTemplate[i].y;
+  }
+  offset += 2 * rt_w * rt_h;
+  // Quad coordinates of the template
+  // Every element has two fields (x,y) that are arrays of four elements
+  // (corners)
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    data[offset + 8 * i] = qTemplate[i].x[0];
+    data[offset + 8 * i + 1] = qTemplate[i].y[0];
+    data[offset + 8 * i + 2] = qTemplate[i].x[1];
+    data[offset + 8 * i + 3] = qTemplate[i].y[1];
+    data[offset + 8 * i + 4] = qTemplate[i].x[2];
+    data[offset + 8 * i + 5] = qTemplate[i].y[2];
+    data[offset + 8 * i + 6] = qTemplate[i].x[3];
+    data[offset + 8 * i + 7] = qTemplate[i].y[3];
+  }
+  offset += 8 * rt_w * rt_h;
+  // Pixel coordinates of the observation
   // Every element is a struct with two fields: x, y
   for (int i = 0; i < ro_w * ro_h; i++) {
-    data[offset + 2*i]   = pResizedObservation[i].x;
-    data[offset + 2*i+1] = pResizedObservation[i].y;
+    data[offset + 2 * i] = pResizedObservation[i].x;
+    data[offset + 2 * i + 1] = pResizedObservation[i].y;
   }
   offset += 2 * ro_w * ro_h;
-	// Normalisation factors of the template
-	data[offset    ] = t_sx;
-	data[offset + 1] = t_sy;
-	offset += 2;
-	// Normalisation factors of the observation
-	data[offset    ] = o_sx;
-	data[offset + 1] = o_sy;
-	offset += 2;
+  // Normalisation factors of the template
+  data[offset] = t_sx;
+  data[offset + 1] = t_sy;
+  offset += 2;
+  // Normalisation factors of the observation
+  data[offset] = o_sx;
+  data[offset + 1] = o_sy;
+  offset += 2;
 
-	// Configuration parameters for the lmmin()
-	// Number of equations
-	int m_dat = 87;
-	// Parameter collection for tuning the fit procedure.
-	lm_control_struct control = lm_control_float;
-	// Verbosity level
-	control.verbosity = 1;
-	// Relative error desired in the sum of squares.
-	control.ftol = 0.0001;
-	// Relative error between last two approximations.
-	control.xtol = 0.0001;
-	// max function evaluations = patience*n_par
-	control.patience = patience;
-	printf("Solver contol.patience: %d (%d objective function calls)\n", control.patience, control.patience * 56);
+  // Configuration parameters for the lmmin()
+  // Number of equations
+  int m_dat = 87;
+  // Parameter collection for tuning the fit procedure.
+  lm_control_struct control = lm_control_float;
+  // Verbosity level
+  control.verbosity = 1;
+  // Relative error desired in the sum of squares.
+  control.ftol = 0.0001;
+  // Relative error between last two approximations.
+  control.xtol = 0.0001;
+  // max function evaluations = patience*n_par
+  control.patience = patience;
+  printf("Solver contol.patience: %d (%d objective function calls)\n",
+         control.patience, control.patience * 56);
 
-	// Progress messages will be written to this file. (NULL --> stdout)
-	control.msgfile = NULL;
-	// Status object
-	lm_status_struct status;
+  // Progress messages will be written to this file. (NULL --> stdout)
+  control.msgfile = NULL;
+  // Status object
+  lm_status_struct status;
 
-	// Call the lmmin() using the wrapper for the objective function
-	printf("\nSolving the system...\n");
-	lmmin( sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status );
-	printf("Solving completed!\n\n");
+  // Call the lmmin() using the wrapper for the objective function
+  printf("\nSolving the system...\n");
+  lmmin(sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status);
+  printf("Solving completed!\n\n");
 
+  // Translate the found vector of parameters to the tpsParams
+  // Unpack the affineParam
+  for (int i = 0; i < 6; i++) {
+    tpsParams.affineParam[i] = par[i];
+  }
+  // Unpack the localCoeff
+  for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
+    tpsParams.localCoeff[i] = par[i + 6];
+  }
 
-	// Translate the found vector of parameters to the tpsParams
-	// Unpack the affineParam
-	for (int i = 0; i < 6; i++) {
-		tpsParams.affineParam[i] = par[i];
-	}
-	// Unpack the localCoeff
-	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
-		tpsParams.localCoeff[i] = par[i+6];
-	}
+  // compensating for the translation caused by image cropping (see Matlab)
+  float o_tx = -(xCentObservation + observationMargins.top) * o_sx;
+  float o_ty = -(yCentObservation + observationMargins.left) * o_sy;
 
-	// compensating for the translation caused by image cropping (see Matlab)
-	float o_tx = -(xCentObservation + observationMargins.top ) * o_sx;
-	float o_ty = -(yCentObservation + observationMargins.left) * o_sy;
+  // Denormalize the coefficients for the final transformation
+  for (int j = 0; j < 3; j++) {
+    tpsParams.affineParam[j] /= o_sx;
+    tpsParams.affineParam[3 + j] /= o_sy;
+  }
+  tpsParams.affineParam[2] -= o_tx / o_sx;
+  tpsParams.affineParam[5] -= o_ty / o_sy;
 
-	// Denormalize the coefficients for the final transformation
-	for (int j = 0; j < 3; j++) {
-		tpsParams.affineParam[j] /= o_sx;
-		tpsParams.affineParam[3+j] /= o_sy;
-	}
-	tpsParams.affineParam[2] -= o_tx / o_sx;
-	tpsParams.affineParam[5] -= o_ty / o_sy;
+  for (int j = 0; j < DIM_C_REF * DIM_C_REF; j++) {
+    tpsParams.localCoeff[j] /= o_sx;
+    tpsParams.localCoeff[DIM_C_REF * DIM_C_REF + j] /= o_sy;
+  }
 
-	for (int j = 0; j < DIM_C_REF * DIM_C_REF; j++) {
-		tpsParams.localCoeff[j] /= o_sx;
-		tpsParams.localCoeff[DIM_C_REF * DIM_C_REF + j] /= o_sy;
-	}
+  // Apply the decided transformation on the normalized quad coordinates of the
+  // template
+  qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
 
-	// Apply the decided transformation on the normalized quad coordinates of the template
-	qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
+  // Find the dimensions needed to fit the registered shape
+  int x_min = 0, x_max = 0, y_min = 0, y_max = 0;
+  for (int i = 0; i < rt_w * rt_h; i++) {
+    for (int q = 0; q < 4; q++) {
+      if (qTemplate[i].x[q] < x_min) x_min = qTemplate[i].x[q];
+      if (qTemplate[i].x[q] > x_max) x_max = qTemplate[i].x[q];
+      if (qTemplate[i].y[q] < y_min) y_min = qTemplate[i].y[q];
+      if (qTemplate[i].y[q] > y_max) y_max = qTemplate[i].y[q];
+    }
+  }
 
-	// Find the dimensions needed to fit the registered shape
-	int x_min = 0, x_max = 0, y_min = 0, y_max = 0;
-	for (int i = 0; i < rt_w * rt_h; i++) {
-		for (int q = 0; q < 4; q++) {
-			if (qTemplate[i].x[q] < x_min) x_min = qTemplate[i].x[q];
-			if (qTemplate[i].x[q] > x_max) x_max = qTemplate[i].x[q];
-			if (qTemplate[i].y[q] < y_min) y_min = qTemplate[i].y[q];
-			if (qTemplate[i].y[q] > y_max) y_max = qTemplate[i].y[q];
-		}
-	}
-
-	// Dimensions of the full registered shape image
-	int reg_w = x_max - x_min + 1;
-	int reg_h = y_max - y_min + 1;
+  // Dimensions of the full registered shape image
+  int reg_w = x_max - x_min + 1;
+  int reg_h = y_max - y_min + 1;
   float *registered = new float[reg_w * reg_h];
 
-	// TODO: The transfer function requires the output to be pre-initialized.
-	// Change the implementation of the transfer() and remove this.
-	for (int i=0; i < reg_w * reg_h; i++) {
-		registered[i] = 0;
-	}
+  // TODO: The transfer function requires the output to be pre-initialized.
+  // Change the implementation of the transfer() and remove this.
+  for (int i = 0; i < reg_w * reg_h; i++) {
+    registered[i] = 0;
+  }
 
-	// Transfer (map) the transformed quad coordinates to pixel coordinates.
-	// Store the result to the pRegistered
-	PixelCoords *pRegistered = new PixelCoords[reg_w * reg_h];
-	setPixelCoords(pRegistered, reg_w, reg_h);
-	transfer(resizedTemplate, pRegistered, qTemplate, rt_w, rt_h, reg_w, reg_h, registered);
+  // Transfer (map) the transformed quad coordinates to pixel coordinates.
+  // Store the result to the pRegistered
+  PixelCoords *pRegistered = new PixelCoords[reg_w * reg_h];
+  setPixelCoords(pRegistered, reg_w, reg_h);
+  transfer(resizedTemplate, pRegistered, qTemplate, rt_w, rt_h, reg_w, reg_h,
+           registered);
 
-	// Crop the result
-	Margins registeredMargins;
-	float *resizedRegistered;
-	int rreg_w, rreg_h;
-	cutMargins(registered, reg_w, reg_h, resizedRegistered, rreg_w, rreg_h, registeredMargins);
+  // Crop the result
+  Margins registeredMargins;
+  float *resizedRegistered;
+  int rreg_w, rreg_h;
+  cutMargins(registered, reg_w, reg_h, resizedRegistered, rreg_w, rreg_h,
+             registeredMargins);
 
-	// Convert and show the transformed output
-	cv::Mat resizedImRegistered(rreg_h, rreg_w, CV_32FC1);
-	convert_layered_to_mat(resizedImRegistered, resizedRegistered);
-	showImage("Registered shape", resizedImRegistered, 520, 100);
+  // Convert and show the transformed output
+  cv::Mat resizedImRegistered(rreg_h, rreg_w, CV_32FC1);
+  convert_layered_to_mat(resizedImRegistered, resizedRegistered);
+  showImage("Registered shape", resizedImRegistered, 520, 100);
 
-  //stop timer here
+  // stop timer here
   timer.end();
   float t = timer.get();  // elapsed time in seconds
   cout << "time: " << t * 1000 << " ms" << endl;
   // wait for key inputs
   cv::waitKey(0);
 
-	// save input and result
-  cv::imwrite("image_template.png", templateIn * 255.f);  // "imwrite" assumes channel range [0,255]*/
-	printf("Template image was written in the image_template.png.\n");
+  // save input and result
+  cv::imwrite("image_template.png",
+              templateIn * 255.f);  // "imwrite" assumes channel range [0,255]*/
+  printf("Template image was written in the image_template.png.\n");
   cv::imwrite("image_observation.png", observationIn * 255.f);
-	printf("Observation image was written in the image_observation.png.\n");
-	cv::imwrite("image_registered.png", resizedImRegistered * 255.f);
-	printf("Registered shape image was written in the image_registered.png.\n");
+  printf("Observation image was written in the image_observation.png.\n");
+  cv::imwrite("image_registered.png", resizedImRegistered * 255.f);
+  printf("Registered shape image was written in the image_registered.png.\n");
 
   // free allocated arrays
   delete[] observationImg;
   delete[] templateImg;
   delete[] registered;
-	delete[] resizedRegistered;
-	delete[] qTemplate;
-	delete[] pTemplate;
-	delete[] pResizedObservation;
-	delete[] pRegistered;
-	delete[] par;
-	delete[] data;
+  delete[] resizedRegistered;
+  delete[] qTemplate;
+  delete[] pTemplate;
+  delete[] pResizedObservation;
+  delete[] pRegistered;
+  delete[] par;
+  delete[] data;
 
   // close all opencv windows
   cvDestroyAllWindows();

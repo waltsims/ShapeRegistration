@@ -39,8 +39,7 @@ struct TPSParams {
   /** affine parameters: a
    *  size: 2 X 3
    */
-  float affineParam[2 * 3] = {1, 0, 0,
-							                0, 1, 0};
+  float affineParam[2 * 3] = {1, 0, 0, 0, 1, 0};
   /** local coefficient: w
    *  size: 2 X degree of moment^2
    */
@@ -51,31 +50,63 @@ struct TPSParams {
    *  25 total points odered x then y dimensions
    */
   float ctrlP[2 * DIM_C_REF * DIM_C_REF] = {
-	  //xx
+      // xx
       -0.333333333333333,
-	  -0.333333333333333, -0.333333333333333,
-      -0.333333333333333, -0.333333333333333, -0.166666666666667,
-      -0.166666666666667, -0.166666666666667, -0.166666666666667,
-      -0.166666666666667, 0, 0, 0, 0, 0, 0.166666666666667, 0.166666666666667,
-      0.166666666666667, 0.166666666666667, 0.166666666666667,
-      0.333333333333333, 0.333333333333333, 0.333333333333333,
-      0.333333333333333, 0.333333333333333,
+      -0.333333333333333,
+      -0.333333333333333,
+      -0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      -0.166666666666667,
+      -0.166666666666667,
+      -0.166666666666667,
+      -0.166666666666667,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.166666666666667,
+      0.166666666666667,
+      0.166666666666667,
+      0.166666666666667,
+      0.166666666666667,
+      0.333333333333333,
+      0.333333333333333,
+      0.333333333333333,
+      0.333333333333333,
+      0.333333333333333,
 
-	  -0.333333333333333,
-      -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
-      -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
-      0.333333333333333, -0.333333333333333, -0.166666666666667, 0,
-      0.166666666666667, 0.333333333333333, -0.333333333333333,
-      -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
-      -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
+      0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
+      0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
+      0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
+      0.333333333333333,
+      -0.333333333333333,
+      -0.166666666666667,
+      0,
+      0.166666666666667,
       0.333333333333333};
 };
-
 
 /**
  *
  */
-
 
 /** structure to save quad coordinates of each pixel
  *
@@ -189,7 +220,8 @@ void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
  *  \return nothing
  */
 void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
-                          float yCentCoord, float &normXFactor, float &normYFactor);
+                          float yCentCoord, float &normXFactor,
+                          float &normYFactor);
 
 /** normalize the quad coordinates for each pixel
  *  \param[in] w                  width of the image
@@ -201,7 +233,8 @@ void pCoordsNormalisation(int w, int h, PixelCoords *pCoords, float xCentCoord,
  *  \return nothing
  */
 void qCoordsNormalization(int w, int h, QuadCoords *qCoords, float xCentCoord,
-                          float yCentCoord, float &normXFactor, float &normYFactor);
+                          float yCentCoord, float &normXFactor,
+                          float &normYFactor);
 
 /** inverse normalization of the image coordinates
  *  \param[in] w                  width of the image
@@ -233,18 +266,18 @@ void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree);
  *  See http://apps.jcns.fz-juelich.de/man/lmmin.html
  *  as well as the example 3rdparty/lmfit-6.1/demo/nonlin1.c
  */
-void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data, double *fvec, int *userbreak);
+void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
+                           double *fvec, int *userbreak);
 
 /** objective function for LM solver
  *
  */
-void objectiveFunction(float *observationImg, float *templateImg,
-                        int ro_w, int ro_h,
-                        double *normalization, TPSParams &tpsParams,
-                        QuadCoords *qTemplate, PixelCoords *pTemplate,
-                        PixelCoords *pObservation, int rt_w, int rt_h,
-                        float t_sx, float t_sy, float o_sx, float o_sy,
-                        double *residual);
+void objectiveFunction(float *observationImg, float *templateImg, int ro_w,
+                       int ro_h, double *normalization, TPSParams &tpsParams,
+                       QuadCoords *qTemplate, PixelCoords *pTemplate,
+                       PixelCoords *pObservation, int rt_w, int rt_h,
+                       float t_sx, float t_sy, float o_sx, float o_sy,
+                       double *residual);
 
 /** thin plate spline for pixel coordinates
  *  \param[in] imgIn           input image
@@ -299,8 +332,8 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords, TPSParams &tpsParams,
-                   int mmtDegree);
+void jacobianTrans(int w, int h, float *jacobi, PixelCoords *pCoords,
+                   TPSParams &tpsParams, int mmtDegree);
 /** Discription to come
  *
  * */

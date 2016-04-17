@@ -234,7 +234,6 @@ int main(int argc, char **argv) {
   // TPS transformation parameters
   TPSParams tpsParams;
 
-  // normalized pCoords of the Observation
   float xCentObservation;
   float yCentObservation;
   centerOfMass(resizedObservation, ro_w, ro_h, xCentObservation,
@@ -424,8 +423,8 @@ int main(int argc, char **argv) {
   // Store the result to the pRegistered
   PixelCoords *pRegistered = new PixelCoords[reg_w * reg_h];
   setPixelCoords(pRegistered, reg_w, reg_h);
-  transfer(resizedTemplate, pRegistered, qTemplate, rt_w, rt_h, reg_w, reg_h,
-           registered);
+  transfer(registered, pRegistered, reg_w, reg_h, resizedTemplate, qTemplate,
+           rt_w, rt_h);
 
   // Crop the result
   Margins registeredMargins;

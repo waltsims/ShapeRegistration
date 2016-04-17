@@ -25,8 +25,6 @@ void setPixelCoords(PixelCoords *pCoords, int w, int h) {
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       index = x + y * w;
-	  //bug fix was to switch indexes here.... works for now
-	  //TODO look for cause of this and repair in future!!!!
       pCoords[index].x = (float)x;
       pCoords[index].y = (float)y;
     }
@@ -153,11 +151,42 @@ void addMargins(float *resizedImg, int resizedW, int resizedH, float *imgOut,
   }
 }
 
+int getNumForeground(float *imgIn, int w, int h) {
+  /** Compute the sum of the coordinates and the number of foreground pixels
+     */
+
+  int numForeground = 0;
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      if (imgIn[x + (w * y)] == FOREGROUND) {
+        numForeground++;
+      }
+    }
+  }
+  return numForeground;
+}
+
+void getCoordForeground(float *imgIn, PixelCoords *pImgIn, int w, int h,
+                        PixelCoords *pForeground) {
+  // could use vectors to this to append data?
+  int index = 0;
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      if (imgIn[x + (w * y)] == FOREGROUND) {
+        pForeground[index].x = pImgIn[x + y * w].x;
+        pForeground[index].y = pImgIn[x + y * w].y;
+        index++;
+      }
+    }
+  }
+}
+
 void centerOfMass(float *imgIn, int w, int h, float &xCentCoord,
                   float &yCentCoord) {
   /** Initializations
   * xCentCoord, yCentCoord: x,y indices of the center of mass
-  * numOfForegroundPixel: number of the foreground pixels */
+  * numOfForegroundPixel: number of the  pixels */
   xCentCoord = 0;
   yCentCoord = 0;
   int numOfForegroundPixel = 0;
@@ -253,27 +282,23 @@ void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
   }
 }
 
-
-void imageMoment(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
+void imageMoment(PixelCoords *pImg, int lenForeground, float *mmt,
                  int mmtDegree) {
   // Compute all the combinations of the (p+q)-order image moments
   // Keep in mind that p,q go from 0 to mmtDegree-1.
   for (int q = 0; q < mmtDegree; q++) {
     for (int p = 0; p < mmtDegree; p++) {
       int mmtIndex = p + q * mmtDegree;
-	  //cout << "first for set: " << p << " " << q << endl;
+      // cout << "first for set: " << p << " " << q << endl;
 
       // Compute the image moments taking the contributions from all the pixels
-      for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-          int index = x + (w * y);
-          /** note: (q+p)th order in the dissertation but not here,
-           *  need to check later
-           */
+      for (int index = 0; index < lenForeground; index++) {
+        /** note: (q+p)th order in the dissertation but not here,
+         *  need to check later
+         */
 
-          mmt[mmtIndex * ( w * h) + index] = pow(pImg[index].x, p + 1) *
-                                      pow(pImg[index].y, q + 1) * imgIn[index];
-        }
+        mmt[mmtIndex * lenForeground + index] =
+            pow(pImg[index].x, p + 1) * pow(pImg[index].y, q + 1);
       }
     }
   }
@@ -291,8 +316,8 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
 		tpsParams.affineParam[i] = par[i];
 	}
 
-  // printf("affineParam[0] = %f, [1] = %f, [2] = %f\n", tpsParams.affineParam[0], tpsParams.affineParam[1], tpsParams.affineParam[2]);
-  // printf("affineParam[3] = %f, [4] = %f, [5] = %f\n", tpsParams.affineParam[3], tpsParams.affineParam[4], tpsParams.affineParam[5]);
+  /*printf("affineParam[0] = %f, [1] = %f, [2] = %f\n", tpsParams.affineParam[0], tpsParams.affineParam[1], tpsParams.affineParam[2]);*/
+  /*printf("affineParam[3] = %f, [4] = %f, [5] = %f\n", tpsParams.affineParam[3], tpsParams.affineParam[4], tpsParams.affineParam[5]);*/
 
 	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
 		tpsParams.localCoeff[i] = par[i+6];
@@ -427,36 +452,58 @@ void objectiveFunction(float *observationImg, float *templateImg,
                         PixelCoords *pObservation, int rt_w, int rt_h,
                         float t_sx, float t_sy, float o_sx, float o_sy,
                         double *residual) {
-  // printf("called!\n");
   static unsigned int call_count = 0;
   printf("call count = %d\n", call_count++);
+
   int momentDeg = 9;
-
   float resNorm = 0;
-
-  float * observationMoment = new float[momentDeg * momentDeg * ro_w * ro_h];
-  float * templateMoment= new float[momentDeg * momentDeg * rt_w * rt_h];
-
 
   float sumTempMoment[momentDeg * momentDeg] ;
   float sumObsMoment[momentDeg * momentDeg] ;
+  //init vars
   for ( int init = 0; init < momentDeg * momentDeg; init ++){
 	  sumObsMoment[init] =(float)0;
 	  sumTempMoment[init] = (float)0;
   }
 
+  //reszied pTemplate and pObservation to just foreground
+  int o_lenForeground;
+  int t_lenForeground;
+
+  // get the size of the foreground array
+  o_lenForeground = getNumForeground(observationImg , ro_w, ro_h) ;
+  t_lenForeground = getNumForeground(templateImg, rt_w, rt_h);
+
+  //create foreground array
+  PixelCoords * pfObservation = new PixelCoords[o_lenForeground];
+  PixelCoords * pfTemplate = new PixelCoords[t_lenForeground];
+  
+  // create image moment array
+  float * observationMoment = new float[momentDeg * momentDeg * o_lenForeground];
+  float * templateMoment= new float[momentDeg * momentDeg * t_lenForeground];
+
+  //get coordinates of foreground
+  getCoordForeground(observationImg, pObservation,ro_w, ro_h,
+                        pfObservation) ;
+  getCoordForeground(templateImg, pTemplate, rt_w,  rt_h,
+                        pfTemplate) ;
+  
+
   // get the jacobian at each pixel with the current tps params
-  float jacobi[rt_w * rt_h];
-  jacobianTrans(rt_w, rt_h, jacobi, pTemplate, tpsParams, DIM_C_REF);
-  // printf("jacobi[0] = %f, jacobi[100] = %f, jacobi[last] = %f\n", jacobi[0], jacobi[100], jacobi[rt_w * rt_h - 1]);
+  float jacobi[t_lenForeground];
+  jacobianTrans(t_lenForeground, jacobi, pfTemplate, tpsParams, DIM_C_REF);
 
   // calculate tps transformation of template
-  pTPS(rt_w, rt_h, pTemplate, tpsParams, DIM_C_REF);
+  pTPS(t_lenForeground, pfTemplate, tpsParams, DIM_C_REF);
 
   // get the moments of the TPS transformation of the template
-  imageMoment(templateImg, pTemplate, rt_w, rt_h, templateMoment, momentDeg);
+  imageMoment(pfTemplate, t_lenForeground, templateMoment, momentDeg);
   // get the moments of the observation
-  imageMoment(observationImg, pObservation, ro_w, ro_h, observationMoment, momentDeg);
+  imageMoment(pfObservation, o_lenForeground, observationMoment, momentDeg);
+
+  //fast clean up
+  delete[] pfObservation;
+  delete[] pfTemplate;
 
   // Determinant of the normFactor of the normalized template image
   float detN1 = 0;
@@ -468,25 +515,25 @@ void objectiveFunction(float *observationImg, float *templateImg,
   // Sum the moments of each degree for each pixel of the two images
   for (int index = 0; index < momentDeg * momentDeg; index++) {
     // Transformed template
-    for (int y = 0; y < rt_h; y++) {
-      for (int x = 0; x < rt_w; x++) {
-        sumTempMoment[index] +=
-            templateMoment[index * (rt_h * rt_w) + (x + rt_w * y)] *
-            jacobi[x + rt_w * y];
-      }
+
+    for (int tempIndex = 0; tempIndex < t_lenForeground; tempIndex++) {
+      sumTempMoment[index] +=
+          templateMoment[index * t_lenForeground + tempIndex] *
+          jacobi[tempIndex];
     }
     sumTempMoment[index] /= detN2;
 
     // Observation
-    for (int y = 0; y < ro_h; y++) {
-      for (int x = 0; x < ro_w; x++) {
-        sumObsMoment[index] +=
-            observationMoment[index * (ro_h * ro_w) + (x + ro_w * y)];
-      }
+    for (int obsIndex = 0; obsIndex < o_lenForeground; obsIndex++) {
+      sumObsMoment[index] +=
+          observationMoment[index * o_lenForeground + obsIndex];
     }
-    sumObsMoment[index] /= detN1;
 
-    // Compute the residual as the difference between the LHS and the RHS of eq.22
+    sumObsMoment[index] /= detN1;
+	
+
+    // Compute the residual as the difference between the LHS and the RHS of
+    // eq.22
     residual[index] =
         (sumObsMoment[index] - sumTempMoment[index]) / normalisation[index];
 
@@ -527,17 +574,15 @@ void objectiveFunction(float *observationImg, float *templateImg,
 };
 
 // PixelCoords* pCoordsSigma
-void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
+void pTPS(int lenForeground, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
 
-  int index;
   int dimSize = c_dim * c_dim;
   float Q;
 
+  //TODO make free defomation subfunction?
  float freeDeformation[2] = {0, 0};
   // for every pixel location
-  for (int x = 0; x < w; x++) {
-    for (int y = 0; y < h; y++) {
-      index = x + w * y;
+    for (int index = 0; index < lenForeground; index++) {
 
       // for all c_m support coordinates
       freeDeformation[0] = 0;
@@ -560,8 +605,6 @@ void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
 
 		float tempPCoordsX = pCoords[index].x;
 		float tempPCoordsY = pCoords[index].y;
-      // TODO this looks right but seems to be producing incorrect reuslts
-      // at the boundaries..... see facebook discussion from sunday
       pCoords[index].x = (tpsParams.affineParam[0] * tempPCoordsX) +
                          (tpsParams.affineParam[1] * tempPCoordsY) +
                          tpsParams.affineParam[2] + freeDeformation[0];
@@ -570,7 +613,6 @@ void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams, int c_dim) {
                          (tpsParams.affineParam[4] * tempPCoordsY) +
                          tpsParams.affineParam[5] + freeDeformation[1];
     }
-  }
 }
 
 void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams, int c_dim) {
@@ -632,7 +674,7 @@ float radialApprox( float x, float y, float cx, float cy ) {
 
 }
 
-void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords,
+void jacobianTrans(int lenForeground, float *jacobi, PixelCoords * pCoords,
                    TPSParams &tpsParams, int c_dim) {
   // Index in the image and in the *jacobi
   int indexP;
@@ -650,65 +692,60 @@ void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords,
   int indexJ;
 
   // For each pixel
-  for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) {
-      // Index of the pixel in the image
-      indexP = x + w * y;
+  for (indexP = 0; indexP < lenForeground; indexP++) {
+    // Reset the local jacobi elements to a_ij for the current pixel
+    for (int i = 0; i < 2; i++) {
+      for (int j = 0; j < 2; j++) {
+        indexJ = i + 2 * j;
+        jacEl[indexJ] = tpsParams.affineParam[i + 3 * j];
+      }
+    }
 
-      // Reset the local jacobi elements to a_ij for the current pixel
+    // Note: synchronize here in the GPU version
+
+    // For each control point
+    for (int k = 0; k < K; k++) {
+      // Compute the argument of the log()
+      // squareOfNorm = (ck_x - x)^2 + (ck_y - y)^2
+      squareOfNorm = (tpsParams.ctrlP[k] - pCoords[indexP].x) *
+                         (tpsParams.ctrlP[k] - pCoords[indexP].x) +
+                     (tpsParams.ctrlP[k + K] - pCoords[indexP].y) *
+                         (tpsParams.ctrlP[k + K] - pCoords[indexP].y);
+      // TODO this should be globaly defined as eps
+      if (squareOfNorm > 0.000001) {
+        // Precompute the reused term
+        precomp = 2 * (1 + log(squareOfNorm));
+      } else {
+        precomp = 2;
+      }
+      // For each of the four elements of the jacobian
       for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2; j++) {
-          indexJ = i + 2*j;
-          jacEl[indexJ] = tpsParams.affineParam[i + 3*j];
+          // Index in the local jacobi elements array
+          indexJ = i + 2 * j;
+          // Do we need the x or the y in the place of x_j?
+          x_j = (j == 0 ? pCoords[indexP].x : pCoords[indexP].y);
+          // jacobi_ij -= precomp * w_ki * (c_kj - x_j)
+          jacEl[indexJ] -= precomp * tpsParams.localCoeff[k + i * K] *
+                           (tpsParams.ctrlP[k + j * K] - x_j);
         }
       }
-
-      // Note: synchronize here in the GPU version
-
-      // For each control point
-      for (int k = 0; k < K; k++) {
-        // Compute the argument of the log()
-        // squareOfNorm = (ck_x - x)^2 + (ck_y - y)^2
-        squareOfNorm = (tpsParams.ctrlP[k] - pCoords[indexP].x)   * (tpsParams.ctrlP[k] - pCoords[indexP].x)
-                     + (tpsParams.ctrlP[k+K] - pCoords[indexP].y) * (tpsParams.ctrlP[k+K] - pCoords[indexP].y);
-		//TODO this should be globaly defined as eps
-        if (squareOfNorm > 0.000001) {
-          // Precompute the reused term
-          precomp = 2 * (1 + log(squareOfNorm));
-        } else {
-          precomp = 2;
-        }
-        // For each of the four elements of the jacobian
-        for (int i = 0; i < 2; i++) {
-          for (int j = 0; j < 2; j++) {
-            // Index in the local jacobi elements array
-            indexJ = i + 2*j;
-            // Do we need the x or the y in the place of x_j?
-            x_j = (j == 0 ? pCoords[indexP].x : pCoords[indexP].y);
-            // jacobi_ij -= precomp * w_ki * (c_kj - x_j)
-            jacEl[indexJ] -= precomp * tpsParams.localCoeff[k + i*K]
-                            * (tpsParams.ctrlP[k + j*K] - x_j);
-          }
-        }
-      }
-
-      // Compute the determinant of the local jacobi elements
-      jacobi[indexP] = jacEl[0]*jacEl[3] - jacEl[1]*jacEl[2];
-
+    // Compute the determinant of the local jacobi elements
+    jacobi[indexP] = jacEl[0] * jacEl[3] - jacEl[1] * jacEl[2];
     }
+
   }
-  return;
+return;
 }
 
-void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_w,
-              int t_h, int o_w, int o_h, float *imgOut) {
-
+  void transfer(float *imgOut, PixelCoords *pCoords, int o_w, int o_h,
+                float *imgIn, QuadCoords *qCoords, int i_w, int i_h) {
   int index;
   int p_index;
 
-  for (int j = 0; j < t_h; j++) {
-    for (int i = 0; i < t_w; i++) {
-      index = i + t_w * j;
+  for (int j = 0; j < i_h; j++) {
+    for (int i = 0; i < i_w; i++) {
+      index = i + i_w * j;
       if (imgIn[index] == FOREGROUND) {
         float xpolygon[4] = {qCoords[index].x[0], qCoords[index].x[1],
                              qCoords[index].x[2], qCoords[index].x[3]};
@@ -744,5 +781,4 @@ bool pointInPolygon(int nVert, float *vertX, float *vertY, float testX,
   }
 
   return c;
-
 }

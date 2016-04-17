@@ -167,6 +167,28 @@ void cutMargins(float *imgIn, int w, int h, float *&resizedImg, int &resizedW,
 void addMargins(float *resizedimg, int resizedW, int resizedH, float *imgOut,
                 int w, int h, Margins &margins);
 
+/** get the number of forground pixels in the image
+ * \param[in] imgIn 			image data (binary)
+ * \param[in] w					width of image
+ * \param[in] h					height of image
+ *
+ * \return number if foreground pixels
+ */
+int getNumForeground(float *imgIn, int w, int h);
+/** get coords of foreground image
+ *
+ *\ param[in] imgIn				input image data
+ *  \param[in] w                  width of the image
+ *  \param[in] h                  height of the image
+ *  \param[in, out] pForeground   coords of foreground pixels 
+ *
+ *  \return nothing
+ *
+ *
+ */ 
+
+void getCoordForeground(float *imgIn, PixelCoords *pImgIn, int w, int h,
+                        PixelCoords *pForeground);
 /** set the center of mass of the image
  *  \param[in] imgIn              input image
  *  \param[in] w                  width of the image
@@ -226,7 +248,7 @@ void pCoordsDenormalization(int w, int h, PixelCoords *pCoords,
  *  \note pseudo code of geometric
  * moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
  */
-void imageMoment(float *imgIn, int w, int h, float *mmt, int mmtDegree);
+void imageMoment(PixelCoords pCoords, int lenForeground, float *mmt, int mmtDegree);
 
 /** wrapper for the objective function for the lmmin()
  *  The signature is in the form that lmmin expects.
@@ -258,7 +280,7 @@ void objectiveFunction(float *observationImg, float *templateImg,
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void pTPS(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams,
+void pTPS(int lenForeground, PixelCoords *pCoords, TPSParams &tpsParams,
           int mmtDegree);
 
 /** radial basis approximation
@@ -299,13 +321,23 @@ void qTPS(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords, TPSParams &tpsParams,
+void jacobianTrans(int lenForeground, float *jacobi, PixelCoords * pCoords, TPSParams &tpsParams,
                    int mmtDegree);
-/** Discription to come
+/** transfer data from transformed quadCoords to PixelCoords based image
+ * \param[in] imageIn 			binary data for Template image
+ * \param[in] qCoords			transformed qCoords of template
+ * \param[in] i_w				input width
+ * \param[in] i_h				input height
+ * \param[in, out] imgOut		image data to be written
+ * \param[in] pCoords			pixel position data
+ * \param[in] o_w				output width
+ * \param[in] o_h				output height
+ *
  *
  * */
-void transfer(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords, int t_w,
-              int t_h, int o_w, int o_h, float *imgOut);
+  void transfer(float *imgOut, PixelCoords *pCoords, int o_w, int o_h,
+                float *imgIn, QuadCoords *qCoords, int i_w, int i_h);
+ 
 
 /** check whether a point is inside polygon or not
  *  \param[in] nVert       Number of vertices in the polygon. Whether to repeat

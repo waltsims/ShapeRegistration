@@ -15,8 +15,8 @@
   #ifndef TESTING_H
   #define TESTING_H
 
-  #include "helper.h"
   #include "shapeRegistrationGPU.h"
+  #include "lmmin.h"
   #include <iostream>
   #include <stdio.h>
   #include <cstring>
@@ -24,7 +24,6 @@
   using namespace std;
   using namespace cv;
 
- void testImageMomentGPU(float *imgIn, PixelCoords *pImg, int w, int h, float * mmt, int mmtDegree );
 
   /** Function to perform all the available tests
    *  \param[in] imgIn              array of the input image pixels

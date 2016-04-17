@@ -15,7 +15,7 @@
 #include "lmmin.h"
 #include "shapeRegistration.h"
 #include "shapeRegistrationGPU.h"
-#include "testingGPU.h"
+// #include "testingGPU.h"
 
 #define DIM_C_REF 5
 
@@ -100,6 +100,7 @@ double normFactor[81] = {1.5707963267949,
                          0.00000374507028292392,
                          0.00000161594858354255,
                          0.000000728208110568542};
+
 using namespace std;
 
 int main(int argc, char **argv) {
@@ -369,7 +370,7 @@ int main(int argc, char **argv) {
 
   // Call the lmmin() using the wrapper for the objective function
   printf("\nSolving the system...\n");
-  lmmin(sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status);
+  lmmin(sizePar, par, m_dat, data, lmminObjectiveWrapperGPU, &control, &status);
   printf("Solving completed!\n\n");
 
   // Translate the found vector of parameters to the tpsParams

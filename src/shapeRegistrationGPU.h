@@ -20,7 +20,6 @@
 
 #include <opencv2/opencv.hpp>
 #include <vector>
-#include "shapeRegistration.h"
 
 #define BACKGROUND 0
 #define FOREGROUND 1
@@ -45,9 +44,6 @@ void setPixelCoordsGPU(PixelCoords *pCoords, int w, int h);
  *  \return nothing
  */
 void setQuadCoordsGPU(QuadCoords *qCoords, int w, int h);
-
-void cutMargins(float *imgIn, int w, int h, int &resizedW, int &resizedH,
-                Margins &margins);
 
 /** cut margins of the image
  *  \param[in] imgIn              array of the input image pixels
@@ -89,6 +85,7 @@ void addMarginsGPU(float *resizedimg, int resizedW, int resizedH, float *imgOut,
  *
  *  \return nothing
  */
+
 void centerOfMassGPU(float *h_imgIn, int h_w, int h_h, float &h_xCentCoord,
                      float &h_yCentCoord);
 
@@ -101,8 +98,9 @@ void centerOfMassGPU(float *h_imgIn, int h_w, int h_h, float &h_xCentCoord,
  *
  *  \return nothing
  */
-void pCoordsNormalizationGPU(int w, int h, PixelCoords *pCoords,
-                             float xCentCoord, float yCentCoord);
+void pCoordsNormalisationGPU(int w, int h, PixelCoords *pCoords,
+                             float xCentCoord, float yCentCoord,
+                             float &normXFactor, float &normYFactor);
 
 /** normalize the quad coordinates for each pixel
  *  \param[in] w                  width of the image
@@ -113,10 +111,11 @@ void pCoordsNormalizationGPU(int w, int h, PixelCoords *pCoords,
  *
  *  \return nothing
  */
-void qCoordsNormalizationGPU(int w, int h, QuadCoords *qCoords,
-                             float xCentCoord, float yCentCoord);
+void qCoordsNormalisationGPU(int w, int h, QuadCoords *qCoords,
+                             float xCentCoord, float yCentCoord,
+                             float &normXFactor, float &normYFactor);
 
-/** inverse normalization of the image coordinates
+/** inverse Normalisation of the image coordinates
  *  \param[in] w                  width of the image
  *  \param[in] h                  height of the image
  *  \param[in, out] pCoords       center coordinates of each pixel
@@ -125,7 +124,8 @@ void qCoordsNormalizationGPU(int w, int h, QuadCoords *qCoords,
  *
  *  \return nothing
  */
-void pCoordsDenormalizationGPU(int w, int h, PixelCoords *pCoords,
+
+void pCoordsDenormalisationGPU(int w, int h, PixelCoords *pCoords,
                                float xCentCoord, float yCentCoord);
 
 /** calculate moment of the image
@@ -139,7 +139,7 @@ void pCoordsDenormalizationGPU(int w, int h, PixelCoords *pCoords,
  *  \note pseudo code of geometric
  * moments(http://de.mathworks.com/matlabcentral/answers/71678-how-to-write-matlab-code-for-moments)
  */
-void imageMomentGPU(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
+void imageMomentGPU(PixelCoords *pImg, int lenForeground, float *mmt,
                     int mmtDegree);
 
 /** thin plate spline for pixel coordinates
@@ -154,7 +154,7 @@ void imageMomentGPU(float *imgIn, PixelCoords *pImg, int w, int h, float *mmt,
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void pTPSGPU(int w, int h, PixelCoords *pCoords, TPSParams &tpsParams,
+void pTPSGPU(int lenForeground, PixelCoords *pCoords, TPSParams tpsParams,
              int mmtDegree);
 
 /** radial basis approximation
@@ -181,8 +181,8 @@ float radialApproxGPU(float x, float y, float cx, float cy);
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void qTPSGPU(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
-             int mmtDegree);
+void qfTPSGPU(int lenForeground, QuadCoords *qCoords, TPSParams &tpsParams,
+              int mmtDegree);
 
 /** jacobian transformation
  *  \param[in] w               width of the image
@@ -195,8 +195,11 @@ void qTPSGPU(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void jacobianTransGPU(int w, int h, float *jacobi, TPSParams &tpsParams,
-                      int mmtDegree);
+void qTPSGPU(int h_w, int h_h, QuadCoords *h_qCoords, TPSParams &h_tpsParams,
+             int h_cDim);
+
+void jacobianTransGPU(int lenForeground, float *jacobi, PixelCoords *pCoords,
+                      TPSParams tpsParams, int c_dim);
 /** Discription to come
  *
  * */
@@ -219,30 +222,34 @@ void transferGPU(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords,
  */
 bool pointInPolygonGPU(int nVert, float *vertX, float *vertY, float testX,
                        float testY);
-void objectiveFunctionGPU(float *observationImg, float *templateImg,
-                          float *jacobi, int ro_w, int ro_h,
-                          double *normalisation, TPSParams &tpsParams,
+
+void lmminObjectiveWrapperGPU(const double *par, const int m_dat,
+                              const void *data, double *residual,
+                              int *userbreak);
+
+void objectiveFunctionGPU(float *observationImg, float *templateImg, int ro_w,
+                          int ro_h, double *normalisation, TPSParams &tpsParams,
                           QuadCoords *qTemplate, PixelCoords *pTemplate,
                           PixelCoords *pObservation, int rt_w, int rt_h,
-                          float *residual);
+                          float t_sx, float t_sy, float o_sx, float o_sy,
+                          double *residual);
 
 /** wrapper for the objective function for the lmmin()
  *  The signature is in the form that lmmin expects.
  *  See http://apps.jcns.fz-juelich.de/man/lmmin.html
  *  as well as the example 3rdparty/lmfit-6.1/demo/nonlin1.c
  */
-void lmminObjectiveWrapperGPU(const double *par, const int m_dat, const void *data, double *fvec, int *userbreak);
+void lmminObjectiveWrapperGPU(const double *par, const int m_dat,
+                              const void *data, double *fvec, int *userbreak);
 
 /** objective function for LM solver
  *
  */
-void objectiveFunctionGPU(float *observationImg, float *templateImg,
-                        int ro_w, int ro_h,
-                        double *normalization, TPSParams &tpsParams,
-                        QuadCoords *qTemplate, PixelCoords *pTemplate,
-                        PixelCoords *pObservation, int rt_w, int rt_h,
-                        float t_sx, float t_sy, float o_sx, float o_sy,
-                        double *residual);
-
+void objectiveFunctionGPU(float *observationImg, float *templateImg, int ro_w,
+                          int ro_h, double *normalization, TPSParams &tpsParams,
+                          QuadCoords *qTemplate, PixelCoords *pTemplate,
+                          PixelCoords *pObservation, int rt_w, int rt_h,
+                          float t_sx, float t_sy, float o_sx, float o_sy,
+                          double *residual);
 
 #endif  // SHAPEREGISTRATION_H

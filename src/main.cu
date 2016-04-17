@@ -135,6 +135,14 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+	// maximum number of iterations for the Levenberg-Marquardt (patience)
+	int patience = 25;
+	getParam("l", patience, argc, argv);
+	if (patience < 1) {
+		cerr << "ERROR: the patience for the Levenberg-Marquardt must be >=1" << endl;
+		return 1;
+	}
+
   // Load the input image using opencv (load as "grayscale", since we are
   // working only with binary shapes of single channel)
   cv::Mat observationIn =
@@ -172,21 +180,9 @@ int main(int argc, char **argv) {
 
   cout << "observation image: " << o_w << " x " << o_h << endl;
 
-  // Set the output image format
-  cv::Mat mOut(o_h, o_w, CV_32FC1);  // mOut will be a grayscale image, 1 layer
-  // ### Define your own output images here as needed
-
-  // Allocate arrays
-  // input/output image width: w
-  // input/output image height: h
-
   // allocate raw input image array
   float *observationImg = new float[(size_t)o_w * o_h];
   float *templateImg = new float[(size_t)t_w * t_h];
-
-  // allocate raw output array (the computation result will be stored in this
-  // array, then later converted to mOut for displaying)
-  float *imgOut = new float[(size_t)o_w * o_h];
 
   // Init raw input image array
   // opencv images are interleaved: rgb rgb rgb...  (actually bgr bgr bgr...)
@@ -200,10 +196,8 @@ int main(int argc, char **argv) {
   timer.start();
 
   // show input images
-  showImage("templateIn", templateIn, 100,
-            100);  // show at position (x_from_left=100,y_from_above=100)
-  showImage("observatinIn", observationIn, 300,
-            100);  // show at position (x_from_left=100,y_from_above=100)
+  showImage("templateIn", templateIn, 100, 100);
+  showImage("observationIn", observationIn, 310, 100);
 
   float *resizedTemplate;
   float *resizedObservation;
@@ -220,18 +214,13 @@ int main(int argc, char **argv) {
   cutMargins(observationImg, o_w, o_h, resizedObservation, ro_w, ro_h,
              observationMargins);
 
-  cv::Mat resizedImgOut(ro_h, ro_w, CV_32FC1);  // mOut will be a grayscale image, 1 layer
-  float *resizedImOut = new float[ro_w * ro_h];
-  convert_layered_to_mat(resizedImgOut, resizedObservation);
-  showImage("observation with cut margins", resizedImgOut, 550, 100);
-
   // we also need the center of mass for normailisation
   float xCentTemplate;
   float yCentTemplate;
 
   //normalized quadCoords of Template
   centerOfMass(resizedTemplate, rt_w, rt_h, xCentTemplate, yCentTemplate);
-	printf("xCentTemplate = %f, yCentTemplate = %f\n", xCentTemplate, yCentTemplate);
+
   QuadCoords *qTemplate = new QuadCoords[rt_w * rt_h];
   setQuadCoords(qTemplate, rt_w, rt_h);
 	float t_sx = 1, t_sy = 1; // Normalisation factors
@@ -239,8 +228,6 @@ int main(int argc, char **argv) {
   PixelCoords *pTemplate = new PixelCoords[rt_w * rt_h];
   setPixelCoords(pTemplate, rt_w, rt_h);
   pCoordsNormalisation(rt_w, rt_h, pTemplate, xCentTemplate, yCentTemplate, t_sx, t_sy);
-	printf("t_sx = %f, t_sy = %f\n", t_sx, t_sy);
-	printf("detN1 = %f\n", t_sx*t_sy);
 
   // TPS transformation parameters
   TPSParams tpsParams;
@@ -249,29 +236,11 @@ int main(int argc, char **argv) {
 	float xCentObservation;
 	float yCentObservation;
 	centerOfMass(resizedObservation, ro_w, ro_h, xCentObservation, yCentObservation);
-	printf("xCentObservation = %f, yCentObservation = %f\n", xCentObservation, yCentObservation);
+
   PixelCoords *pResizedObservation = new PixelCoords[ro_w * ro_h];
   setPixelCoords(pResizedObservation, ro_w, ro_h);
 	float o_sx = 1, o_sy = 1; // Normalisation factors
 	pCoordsNormalisation(ro_w, ro_h, pResizedObservation, xCentObservation, yCentObservation, o_sx, o_sy);
-	printf("o_sx = %f, o_sy = %f\n", o_sx, o_sy);
-	printf("detN2 = %f\n", o_sx*o_sy);
-
-
-  /*transfer(resizedTemplate, pResizedObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,*/
-           /*resizedImOut);*/
-
-	/**printf("[Main] tpsParams affine first: %f, last: %f\n", tpsParams.affineParam[0], tpsParams.affineParam[5]);
-	printf("[Main] tpsParams localC first: %f, last: %f\n", tpsParams.localCoeff[0], tpsParams.localCoeff[2 * DIM_C_REF * DIM_C_REF - 1]);
-	printf("[Main] rt_w = %d, rt_h = %d, ro_w = %d, ro_h = %d\n", rt_w, rt_h, ro_w, ro_h);
-	printf("[Main] templateImg first = %f, last = %f\n", resizedTemplate[0], resizedTemplate[rt_w * rt_h - 1]);
-	printf("[Main] observationImg first = %f, last = %f\n", resizedObservation[0], resizedObservation[rt_w * rt_h - 1]);
-	printf("[Main] normalization first = %f, last = %f\n", normFactor[0], normFactor[80]);
-	printf("[Main] pTemplate first.x = %f, first.y = %f, last.x = %f, last.y = %f\n", pTemplate[0].x, pTemplate[0].y, pTemplate[rt_w * rt_h-1].x, pTemplate[rt_w * rt_h-1].y);
-	printf("[Main] qTemplate first.x[0] = %f, first.y[3] = %f, last.x[0] = %f, last.y[3] = %f\n", qTemplate[0].x[0], qTemplate[0].y[3], qTemplate[rt_w * rt_h-1].x[0], qTemplate[rt_w * rt_h-1].y[3]);
-	printf("[Main] pObservation first.x = %f, first.y = %f, last.x = %f, last.y = %f\n", pResizedObservation[0].x, pResizedObservation[0].y, pResizedObservation[ro_w * ro_h -1].x, pResizedObservation[ro_w * ro_h -1].y);
-*/
-
 
 	// Pack the parameters for the lmmin() objective function
 	int sizePar = 6 + (2 * DIM_C_REF * DIM_C_REF);
@@ -372,49 +341,45 @@ int main(int argc, char **argv) {
 	// Parameter collection for tuning the fit procedure.
 	lm_control_struct control = lm_control_float;
 	// Verbosity level
-	// control.verbosity = 31;
+	control.verbosity = 1;
 	// Relative error desired in the sum of squares.
 	control.ftol = 0.0001;
 	// Relative error between last two approximations.
 	control.xtol = 0.0001;
 	// max function evaluations = patience*n_par
-	control.patience = 1;
+	control.patience = patience;
+	printf("Solver contol.patience: %d (%d objective function calls)\n", control.patience, control.patience * 56);
+
 	// Progress messages will be written to this file. (NULL --> stdout)
 	control.msgfile = NULL;
 	// Status object
 	lm_status_struct status;
 
 	// Call the lmmin() using the wrapper for the objective function
+	printf("\nSolving the system...\n");
 	lmmin( sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status );
+	printf("Solving completed!\n\n");
+
 
 	// Translate the found vector of parameters to the tpsParams
-	// Unack the affineParam
-	printf("TPSParam:\n");
+	// Unpack the affineParam
 	for (int i = 0; i < 6; i++) {
 		tpsParams.affineParam[i] = par[i];
-		printf("%f\n", tpsParams.affineParam[i]); // Debug
 	}
 	// Unpack the localCoeff
 	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
 		tpsParams.localCoeff[i] = par[i+6];
-		printf("%f\n", tpsParams.localCoeff[i]); // Debug
 	}
 
 	// compensating for the translation caused by image cropping (see Matlab)
-	float t_tx = -(xCentTemplate    /**+ templateMargins.top    */) * t_sx;
-	float t_ty = -(yCentTemplate    /**+ templateMargins.left   */) * t_sy;
-	float o_tx = -(xCentObservation /**+ observationMargins.top */) * o_sx;
-	float o_ty = -(yCentObservation /**+ observationMargins.left*/) * o_sy;
-	// Debug
-	printf("t_sx = %f, t_sy = %f, t_tx = %f, t_ty = %f", t_sx, t_sy, t_tx, t_ty);
-	printf("o_sx = %f, o_sy = %f, o_tx = %f, o_ty = %f", o_sx, o_sy, o_tx, o_ty);
+	float o_tx = -(xCentObservation + observationMargins.top ) * o_sx;
+	float o_ty = -(yCentObservation + observationMargins.left) * o_sy;
 
 	// Denormalize the coefficients for the final transformation
 	for (int j = 0; j < 3; j++) {
 		tpsParams.affineParam[j] /= o_sx;
 		tpsParams.affineParam[3+j] /= o_sy;
 	}
-	printf("affineParam[2] = %f, o_tx = %f, o_sx = %f, division = %f\n", tpsParams.affineParam[2], o_tx, o_sx, o_tx / o_sx); // Debug
 	tpsParams.affineParam[2] -= o_tx / o_sx;
 	tpsParams.affineParam[5] -= o_ty / o_sy;
 
@@ -423,28 +388,47 @@ int main(int argc, char **argv) {
 		tpsParams.localCoeff[DIM_C_REF * DIM_C_REF + j] /= o_sy;
 	}
 
-	// Debug
-	printf("Denormalized TPSParam:\n");
-	for (int i = 0; i < 6; i++) {
-		printf("%f\n", tpsParams.affineParam[i]);
-	}
-	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
-		printf("%f\n", tpsParams.localCoeff[i]);
-	}
-	//
-
 	// Apply the decided transformation on the normalized quad coordinates of the template
 	qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
 
+	// Find the dimensions needed to fit the registered shape
+	int x_min = 0, x_max = 0, y_min = 0, y_max = 0;
+	for (int i = 0; i < rt_w * rt_h; i++) {
+		for (int q = 0; q < 4; q++) {
+			if (qTemplate[i].x[q] < x_min) x_min = qTemplate[i].x[q];
+			if (qTemplate[i].x[q] > x_max) x_max = qTemplate[i].x[q];
+			if (qTemplate[i].y[q] < y_min) y_min = qTemplate[i].y[q];
+			if (qTemplate[i].y[q] > y_max) y_max = qTemplate[i].y[q];
+		}
+	}
+
+	// Dimensions of the full registered shape image
+	int reg_w = x_max - x_min + 1;
+	int reg_h = y_max - y_min + 1;
+  float *registered = new float[reg_w * reg_h];
+
+	// TODO: The transfer function requires the output to be pre-initialized.
+	// Change the implementation of the transfer() and remove this.
+	for (int i=0; i < reg_w * reg_h; i++) {
+		registered[i] = 0;
+	}
+
 	// Transfer (map) the transformed quad coordinates to pixel coordinates.
 	// Store the result to the pRegistered
-	PixelCoords *pRegistered = new PixelCoords[ro_w * ro_h];
-	setPixelCoords(pRegistered, ro_w, ro_h);
-	transfer(resizedTemplate, pRegistered, qTemplate, rt_w, rt_h, ro_w, ro_h, resizedImOut);
+	PixelCoords *pRegistered = new PixelCoords[reg_w * reg_h];
+	setPixelCoords(pRegistered, reg_w, reg_h);
+	transfer(resizedTemplate, pRegistered, qTemplate, rt_w, rt_h, reg_w, reg_h, registered);
+
+	// Crop the result
+	Margins registeredMargins;
+	float *resizedRegistered;
+	int rreg_w, rreg_h;
+	cutMargins(registered, reg_w, reg_h, resizedRegistered, rreg_w, rreg_h, registeredMargins);
 
 	// Convert and show the transformed output
-	convert_layered_to_mat(resizedImgOut, resizedImOut);
-	showImage("Resized Output", resizedImgOut, 800, 100);
+	cv::Mat resizedImRegistered(rreg_h, rreg_w, CV_32FC1);
+	convert_layered_to_mat(resizedImRegistered, resizedRegistered);
+	showImage("Registered shape", resizedImRegistered, 520, 100);
 
   //stop timer here
   timer.end();
@@ -452,19 +436,24 @@ int main(int argc, char **argv) {
   cout << "time: " << t * 1000 << " ms" << endl;
   // wait for key inputs
   cv::waitKey(0);
-  // save input and result
-  /*cv::imwrite("image_input.png",*/
-  /*mIn * 255.f);  // "imwrite" assumes channel range [0,255]*/
-  /*cv::imwrite("image_result.png", mOut * 255.f);*/
+
+	// save input and result
+  cv::imwrite("image_template.png", templateIn * 255.f);  // "imwrite" assumes channel range [0,255]*/
+	printf("Template image was written in the image_template.png.\n");
+  cv::imwrite("image_observation.png", observationIn * 255.f);
+	printf("Observation image was written in the image_observation.png.\n");
+	cv::imwrite("image_registered.png", resizedImRegistered * 255.f);
+	printf("Registered shape image was written in the image_registered.png.\n");
 
   // free allocated arrays
   delete[] observationImg;
   delete[] templateImg;
-  delete[] imgOut;
-  delete[] resizedImOut;
+  delete[] registered;
+	delete[] resizedRegistered;
 	delete[] qTemplate;
 	delete[] pTemplate;
 	delete[] pResizedObservation;
+	delete[] pRegistered;
 	delete[] par;
 	delete[] data;
 

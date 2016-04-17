@@ -291,16 +291,9 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
 		tpsParams.affineParam[i] = par[i];
 	}
 
-  // printf("affineParam[0] = %f, [1] = %f, [2] = %f\n", tpsParams.affineParam[0], tpsParams.affineParam[1], tpsParams.affineParam[2]);
-  // printf("affineParam[3] = %f, [4] = %f, [5] = %f\n", tpsParams.affineParam[3], tpsParams.affineParam[4], tpsParams.affineParam[5]);
-
 	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
 		tpsParams.localCoeff[i] = par[i+6];
-    // printf("localCoeff[i] = %f\n", tpsParams.localCoeff[i]);
 	}
-
-  // printf("tpsParams affine first: %f, last: %f\n", tpsParams.affineParam[0], tpsParams.affineParam[5]);
-  // printf("tpsParams localC first: %f, last: %f\n", tpsParams.localCoeff[0], tpsParams.localCoeff[2 * DIM_C_REF * DIM_C_REF - 1]);
 
   // Cast the void pointer data to a float pointer dataF
   const float *dataF = static_cast<const float *>(data);
@@ -310,15 +303,12 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
 	int offset = 0;
 
   // Read first the sizes needed to allocate the included arrays
-  // int rt_w = static_cast<int>(data[offset]);
 	int rt_w = dataF[offset    ];
 	int rt_h = dataF[offset + 1];
 	int ro_w = dataF[offset + 2];
 	int ro_h = dataF[offset + 3];
   // We read 4 elements, move the reading position 4 places
 	offset += 4;
-
-  // printf("rt_w = %d, rt_h = %d, ro_w = %d, ro_h = %d\n", rt_w, rt_h, ro_w, ro_h);
 
   // Template image array
 	float *templateImg = new float[rt_w * rt_h];
@@ -327,8 +317,6 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
 	}
 	offset += rt_w * rt_h;
 
-  // printf("templateImg first = %f, last = %f\n", templateImg[0], templateImg[rt_w * rt_h - 1]);
-
   // Observation image array
 	float *observationImg = new float[ro_w * ro_h];
 	for (int i = 0; i < ro_w * ro_h; i++) {
@@ -336,16 +324,12 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
 	}
 	offset += ro_w * ro_h;
 
-  // printf("observationImg first = %f, last = %f\n", observationImg[0], observationImg[rt_w * rt_h - 1]);
-
   // Normalization factors (N_i for eq.22)
   double normalization[81]; // TODO: Make this double everywhere
   for (int i = 0; i < 81; i++) {
     normalization[i] = dataF[offset + i];
   }
   offset += 81;
-
-  // printf("normalization first = %f, last = %f\n", normalization[0], normalization[80]);
 
   // Pixel coordinates of the template
   // Every element is a struct with two fields: x, y
@@ -355,8 +339,6 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
     pTemplate[i].y = dataF[offset + 2*i+1];
   }
   offset += 2 * rt_w * rt_h;
-
-  // printf("pTemplate first.x = %f, first.y = %f, last.x = %f, last.y = %f\n", pTemplate[0].x, pTemplate[0].y, pTemplate[rt_w * rt_h-1].x, pTemplate[rt_w * rt_h-1].y);
 
   // Quad coordinates of the template
   // Every element has two fields (x,y) that are arrays of four elements (corners)
@@ -372,8 +354,6 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
     qTemplate[i].y[3] = dataF[offset + 8*i+7];
   }
   offset += 8 * rt_w * rt_h;
-
-  // printf("qTemplate first.x[0] = %f, first.y[3] = %f, last.x[0] = %f, last.y[3] = %f\n", qTemplate[0].x[0], qTemplate[0].y[3], qTemplate[rt_w * rt_h-1].x[0], qTemplate[rt_w * rt_h-1].y[3]);
 
   // Pixel coordinates of the observation
   // Every element is a struct with two fields: x, y
@@ -396,18 +376,11 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
   o_sy = dataF[offset + 1];
   offset += 2;
 
-  // printf("pObservation first.x = %f, last.y = %f\n", pObservation[0].x, pObservation[ro_w * ro_h -1].y);
-
-  // Array of the residuals of the equations
-  // TODO: Add also the 6 extra equations!
-  // printf("residual first = %f, last = %f\n", residual[0], residual[80]);
-
   // Call the objective function with the unpacked arguments
   objectiveFunction(observationImg, templateImg, ro_w, ro_h,
                     normalization, tpsParams, qTemplate, pTemplate,
                     pObservation, rt_w, rt_h, t_sx, t_sy, o_sx, o_sy, residual);
 
-  // printf("residual first = %f, last = %f\n", residual[0], residual[80]);
 
   // Delete the allocated pointers
   delete[] templateImg;
@@ -429,10 +402,8 @@ void objectiveFunction(float *observationImg, float *templateImg,
                         double *residual) {
   // printf("called!\n");
   static unsigned int call_count = 0;
-  printf("call count = %d\n", call_count++);
+  printf("Current call count = %d.\n", ++call_count);
   int momentDeg = 9;
-
-  float resNorm = 0;
 
   float * observationMoment = new float[momentDeg * momentDeg * ro_w * ro_h];
   float * templateMoment= new float[momentDeg * momentDeg * rt_w * rt_h];
@@ -448,7 +419,6 @@ void objectiveFunction(float *observationImg, float *templateImg,
   // get the jacobian at each pixel with the current tps params
   float jacobi[rt_w * rt_h];
   jacobianTrans(rt_w, rt_h, jacobi, pTemplate, tpsParams, DIM_C_REF);
-  // printf("jacobi[0] = %f, jacobi[100] = %f, jacobi[last] = %f\n", jacobi[0], jacobi[100], jacobi[rt_w * rt_h - 1]);
 
   // calculate tps transformation of template
   pTPS(rt_w, rt_h, pTemplate, tpsParams, DIM_C_REF);
@@ -489,9 +459,6 @@ void objectiveFunction(float *observationImg, float *templateImg,
     // Compute the residual as the difference between the LHS and the RHS of eq.22
     residual[index] =
         (sumObsMoment[index] - sumTempMoment[index]) / normalisation[index];
-
-    // Residual norm^2 (only for output purposes)
-    resNorm += residual[index] * residual[index];
   }
 
   // First restriction of eq.16 (2 equations)
@@ -503,8 +470,6 @@ void objectiveFunction(float *observationImg, float *templateImg,
     residual[index]   += tpsParams.localCoeff[k];
     residual[index+1] += tpsParams.localCoeff[k + K];
   }
-  resNorm += residual[index] * residual[index];
-  resNorm += residual[index+1] * residual[index+1];
 
   index += 2;
   // Second restriction of eq.16 (4 equations)
@@ -514,16 +479,13 @@ void objectiveFunction(float *observationImg, float *templateImg,
       for (int k = 0; k < K; k++) {
         residual[index + (i + 2*j)] += tpsParams.ctrlP[k + j*K] * tpsParams.localCoeff[k + i*K];
       }
-      resNorm += residual[index + (i + 2*j)] * residual[index + (i + 2*j)];
     }
   }
 
-  // Print the residual norm
-  resNorm = sqrt(resNorm);
-  printf("Residual norm = %f\n", resNorm);
-
   delete[] observationMoment;
   delete[] templateMoment;
+
+  return;
 };
 
 // PixelCoords* pCoordsSigma

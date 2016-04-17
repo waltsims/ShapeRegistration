@@ -25,10 +25,8 @@ void setPixelCoords(PixelCoords *pCoords, int w, int h) {
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       index = x + y * w;
-	  //bug fix was to switch indexes here.... works for now
-	  //TODO look for cause of this and repair in future!!!!
-      pCoords[index].x = (float)y;
-      pCoords[index].y = (float)x;
+      pCoords[index].x = (float)x;
+      pCoords[index].y = (float)y;
     }
   }
 }
@@ -465,19 +463,22 @@ void objectiveFunction(float *observationImg, float *templateImg,
   }
 
   //reszied pTemplate and pObservation to just foreground
-  //TODO do for both
   int o_lenForeground;
   int t_lenForeground;
 
+  // get the size of the foreground array
   o_lenForeground = getNumForeground(observationImg , ro_w, ro_h) ;
   t_lenForeground = getNumForeground(templateImg, rt_w, rt_h);
 
-  PixelCoords * pfTemplate = new PixelCoords[t_lenForeground];
+  //create foreground array
   PixelCoords * pfObservation = new PixelCoords[o_lenForeground];
-
+  PixelCoords * pfTemplate = new PixelCoords[t_lenForeground];
+  
+  // create image moment array
   float * observationMoment = new float[momentDeg * momentDeg * o_lenForeground];
   float * templateMoment= new float[momentDeg * momentDeg * t_lenForeground];
 
+  //get coordinates of foreground
   getCoordForeground(observationImg, pObservation,ro_w, ro_h,
                         pfObservation) ;
   getCoordForeground(templateImg, pTemplate, rt_w,  rt_h,
@@ -492,10 +493,13 @@ void objectiveFunction(float *observationImg, float *templateImg,
   pTPS(t_lenForeground, pfTemplate, tpsParams, DIM_C_REF);
 
   // get the moments of the TPS transformation of the template
-  //TODO this is whhere segfaut is
   imageMoment(pfTemplate, t_lenForeground, templateMoment, momentDeg);
   // get the moments of the observation
   imageMoment(pfObservation, o_lenForeground, observationMoment, momentDeg);
+
+  //fast clean up
+  delete[] pfObservation;
+  delete[] pfTemplate;
 
   // Determinant of the normFactor of the normalized template image
   float detN1 = 0;
@@ -508,7 +512,6 @@ void objectiveFunction(float *observationImg, float *templateImg,
   for (int index = 0; index < momentDeg * momentDeg; index++) {
     // Transformed template
 
-    // TOOD change params to fit new size
     for (int tempIndex = 0; tempIndex < t_lenForeground; tempIndex++) {
       sumTempMoment[index] +=
           templateMoment[index * t_lenForeground + tempIndex] *
@@ -562,9 +565,6 @@ void objectiveFunction(float *observationImg, float *templateImg,
   resNorm = sqrt(resNorm);
   printf("Residual norm = %f\n", resNorm);
 
-  /*printf("affineParam[0] = %f, [1] = %f, [2] = %f\n", tpsParams.affineParam[0], tpsParams.affineParam[1], tpsParams.affineParam[2]);*/
-  /*printf("affineParam[3] = %f, [4] = %f, [5] = %f\n", tpsParams.affineParam[3], tpsParams.affineParam[4], tpsParams.affineParam[5]);*/
-
   delete[] observationMoment;
   delete[] templateMoment;
 };
@@ -601,8 +601,6 @@ void pTPS(int lenForeground, PixelCoords *pCoords, TPSParams &tpsParams, int c_d
 
 		float tempPCoordsX = pCoords[index].x;
 		float tempPCoordsY = pCoords[index].y;
-      // TODO this looks right but seems to be producing incorrect reuslts
-      // at the boundaries..... see facebook discussion from sunday
       pCoords[index].x = (tpsParams.affineParam[0] * tempPCoordsX) +
                          (tpsParams.affineParam[1] * tempPCoordsY) +
                          tpsParams.affineParam[2] + freeDeformation[0];
@@ -737,13 +735,13 @@ return;
 }
 
   void transfer(float *imgOut, PixelCoords *pCoords, int o_w, int o_h,
-                float *imgIn, QuadCoords *qCoords, int t_w, int t_h) {
+                float *imgIn, QuadCoords *qCoords, int i_w, int i_h) {
   int index;
   int p_index;
 
-  for (int j = 0; j < t_h; j++) {
-    for (int i = 0; i < t_w; i++) {
-      index = i + t_w * j;
+  for (int j = 0; j < i_h; j++) {
+    for (int i = 0; i < i_w; i++) {
+      index = i + i_w * j;
       if (imgIn[index] == FOREGROUND) {
         float xpolygon[4] = {qCoords[index].x[0], qCoords[index].x[1],
                              qCoords[index].x[2], qCoords[index].x[3]};

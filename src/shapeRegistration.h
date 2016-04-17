@@ -326,17 +326,17 @@ void jacobianTrans(int lenForeground, float *jacobi, PixelCoords * pCoords, TPSP
 /** transfer data from transformed quadCoords to PixelCoords based image
  * \param[in] imageIn 			binary data for Template image
  * \param[in] qCoords			transformed qCoords of template
- * \param[in] t_w				template width
- * \param[in] t_h				template height
+ * \param[in] i_w				input width
+ * \param[in] i_h				input height
  * \param[in, out] imgOut		image data to be written
  * \param[in] pCoords			pixel position data
- * \param[in] t_w				observation width
- * \param[in] t_h				observation height
+ * \param[in] o_w				output width
+ * \param[in] o_h				output height
  *
  *
  * */
   void transfer(float *imgOut, PixelCoords *pCoords, int o_w, int o_h,
-                float *imgIn, QuadCoords *qCoords, int t_w, int t_h);
+                float *imgIn, QuadCoords *qCoords, int i_w, int i_h);
  
 
 /** check whether a point is inside polygon or not

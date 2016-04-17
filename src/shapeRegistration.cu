@@ -299,7 +299,7 @@ void imageMoment(PixelCoords *pImg, int lenForeground, float *mmt,
          *  need to check later
          */
 
-        mmt[mmtIndex  + index] =
+        mmt[mmtIndex * lenForeground + index] =
             pow(pImg[index].x, p + 1) * pow(pImg[index].y, q + 1);
       }
     }

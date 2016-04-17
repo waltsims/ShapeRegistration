@@ -85,18 +85,13 @@ void getCoordForeground(float *imgIn, PixelCoords *pImgIn, int w, int h,
   }
 }
 
-__global__ void imageMomentKernel(float *d_imgIn, PixelCoords *d_pImg, int d_w,
-                                  int d_h, float *d_mmt, int d_mmtDegree) {
-  int index;
-
+__global__ void imageMomentKernel(PixelCoords *d_pImg, int d_lenForeground, float *d_mmt,
+                    int d_mmtDegree) {
   int x = threadIdx.x + blockDim.x * blockIdx.x;
-  int y = threadIdx.y + blockDim.y * blockIdx.y;
 
-  if (x < d_w && y < d_h) {
-    index = x + y * d_w;
+  if (x < d_lenForeground) {
     // Compute all the combinations of the (p+q)-order image moments
     // Keep in mind that p,q go from 0 to mmtDegree-1.
-
     for (int q = 0; q < d_mmtDegree; q++) {
       for (int p = 0; p < d_mmtDegree; p++) {
         int mmtIndex = p + q * d_mmtDegree;
@@ -104,48 +99,45 @@ __global__ void imageMomentKernel(float *d_imgIn, PixelCoords *d_pImg, int d_w,
         // Compute the image moments taking the contributions from all the
         // pixels
 
-        d_mmt[mmtIndex * (d_w * d_h) + index] = pow(d_pImg[index].x, p + 1) *
-                                                pow(d_pImg[index].y, q + 1) *
-                                                d_imgIn[index];
+        d_mmt[mmtIndex * d_lenForeground + x] = pow(d_pImg[x].x, p + 1) *
+                                                pow(d_pImg[x].y, q + 1);
       }
     }
   }
 }
 
-void imageMomentGPU(float *h_imgIn, PixelCoords *h_pImg, int h_w, int h_h,
-                    float *h_mmt, int h_mmtDegree) {
-  dim3 block = dim3(16, 8, 1);
+void imageMomentGPU(PixelCoords *h_pImg, int h_lenForeground, float *h_mmt,
+                    int h_mmtDegree) {
+
+// void imageMomentGPU(float *h_imgIn, PixelCoords *h_pImg, int h_w, int h_h,
+//                     float *h_mmt, int h_mmtDegree) {
+  dim3 block = dim3(128, 1, 1);
   dim3 grid =
-      dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
+      dim3((h_lenForeground + block.x - 1) / block.x, 1, 1);
 
   PixelCoords *d_pImg;
-  cudaMalloc(&d_pImg, h_w * h_h * sizeof(PixelCoords));
-  CUDA_CHECK;
-
-  float *d_imgIn;
-  cudaMalloc(&d_imgIn, h_w * h_h * sizeof(float));
+  cudaMalloc(&d_pImg, h_lenForeground * sizeof(PixelCoords));
   CUDA_CHECK;
 
   float *d_mmt;
-  cudaMalloc(&d_mmt, h_mmtDegree * h_mmtDegree * h_w * h_h * sizeof(float));
+  cudaMalloc(&d_mmt, h_mmtDegree * h_mmtDegree * h_lenForeground * sizeof(float));
   CUDA_CHECK;
 
-  cudaMemcpy(d_imgIn, h_imgIn, h_w * h_h * sizeof(float),
-             cudaMemcpyHostToDevice);
-  CUDA_CHECK;
-  cudaMemcpy(d_pImg, h_pImg, h_w * h_h * sizeof(PixelCoords),
+  // NOTE: check the size of array
+  cudaMemcpy(d_pImg, h_pImg, h_lenForeground * sizeof(PixelCoords),
              cudaMemcpyHostToDevice);
   CUDA_CHECK;
 
+  cudaMemset(d_mmt, 0, h_mmtDegree * h_mmtDegree * h_lenForeground * sizeof(float));
+  CUDA_CHECK;
+  
   imageMomentKernel << <grid, block>>>
-      (d_imgIn, d_pImg, h_w, h_h, d_mmt, h_mmtDegree);
+      (d_pImg, h_lenForeground, d_mmt, h_mmtDegree);
 
   cudaMemcpy(h_mmt, d_mmt,
-             h_mmtDegree * h_mmtDegree * h_w * h_h * sizeof(float),
+             h_mmtDegree * h_mmtDegree * h_lenForeground * sizeof(float),
              cudaMemcpyDeviceToHost);
 
-  cudaFree(d_imgIn);
-  CUDA_CHECK;
   cudaFree(d_mmt);
   CUDA_CHECK;
   cudaFree(d_pImg);
@@ -667,19 +659,16 @@ __device__ float radialApproxKernel(float d_x, float d_y, float d_cx,
   return d_r2 < 0.0000000001 ? 0 : d_r2 * log(d_r2);
 }
 
-__global__ void pTPSGPUKernel(int d_w, int d_h, PixelCoords *d_pCoords,
-                              TPSParams d_tpsParams, int d_cDim) {
-  int index;
+__global__ void pTPSGPUKernel(int d_lenForeground, PixelCoords *d_pCoords, TPSParams d_tpsParams,
+             int d_cDim) {
 
   int x = threadIdx.x + blockDim.x * blockIdx.x;
-  int y = threadIdx.y + blockDim.y * blockIdx.y;
 
-  index = x + d_w * y;
   int dimSize = d_cDim * d_cDim;
   float Q;
   float freeDeformation[2] = {0, 0};
 
-  if (x < d_w && y < d_h) {
+  if (x < d_lenForeground) {
     Q = 0;
     freeDeformation[0] = 0;
     freeDeformation[1] = 0;
@@ -687,7 +676,7 @@ __global__ void pTPSGPUKernel(int d_w, int d_h, PixelCoords *d_pCoords,
     for (int k = 0; k < dimSize; k++) {
       // calculate radial approximation
 
-      Q = radialApproxKernel(d_pCoords[index].x, d_pCoords[index].y,
+      Q = radialApproxKernel(d_pCoords[x].x, d_pCoords[x].y,
                              d_tpsParams.ctrlP[k],
                              d_tpsParams.ctrlP[k + dimSize]);
 
@@ -698,41 +687,111 @@ __global__ void pTPSGPUKernel(int d_w, int d_h, PixelCoords *d_pCoords,
     }
 
     // note:: change
-    float tempQCoordsX = d_pCoords[index].x;
-    float tempQCoordsY = d_pCoords[index].y;
+    float tempQCoordsX = d_pCoords[x].x;
+    float tempQCoordsY = d_pCoords[x].y;
 
-    d_pCoords[index].x = (d_tpsParams.affineParam[0] * tempQCoordsX) +
+    d_pCoords[x].x = (d_tpsParams.affineParam[0] * tempQCoordsX) +
                          (d_tpsParams.affineParam[1] * tempQCoordsY) +
                          d_tpsParams.affineParam[2] + freeDeformation[0];
 
-    d_pCoords[index].y = (d_tpsParams.affineParam[3] * tempQCoordsX) +
+    d_pCoords[x].y = (d_tpsParams.affineParam[3] * tempQCoordsX) +
                          (d_tpsParams.affineParam[4] * tempQCoordsY) +
                          d_tpsParams.affineParam[5] + freeDeformation[1];
   }
 }
 
-void pTPSGPU(int h_w, int h_h, PixelCoords *h_pCoords, TPSParams &h_tpsParams,
+void pTPSGPU(int h_lenForeground, PixelCoords *h_pCoords, TPSParams h_tpsParams,
              int h_cDim) {
-  dim3 block = dim3(16, 8, 1);
+  dim3 block = dim3(128, 1, 1);
   dim3 grid =
-      dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
+      dim3((h_lenForeground + block.x - 1) / block.x, 1, 1);
 
   PixelCoords *d_pCoords;
-  cudaMalloc(&d_pCoords, h_h * h_w * sizeof(PixelCoords));
+  cudaMalloc(&d_pCoords, h_lenForeground * sizeof(PixelCoords));
   CUDA_CHECK;
 
-  cudaMemcpy(d_pCoords, h_pCoords, h_h * h_w * sizeof(PixelCoords),
+  cudaMemcpy(d_pCoords, h_pCoords, h_lenForeground * sizeof(PixelCoords),
              cudaMemcpyHostToDevice);
   CUDA_CHECK;
 
-  pTPSGPUKernel << <grid, block>>> (h_w, h_h, d_pCoords, h_tpsParams, h_cDim);
+  pTPSGPUKernel <<<grid, block>>> (h_lenForeground, d_pCoords, h_tpsParams, h_cDim);
   CUDA_CHECK;
 
-  cudaMemcpy(h_pCoords, d_pCoords, h_h * h_w * sizeof(PixelCoords),
+  cudaMemcpy(h_pCoords, d_pCoords, h_lenForeground * sizeof(PixelCoords),
              cudaMemcpyDeviceToHost);
   CUDA_CHECK;
 
   cudaFree(d_pCoords);
+  CUDA_CHECK;
+}
+
+__global__ void qfTPSKernel(int d_lenForeground, QuadCoords *d_qCoords,
+                           TPSParams d_tpsParams, int d_cDim) {
+
+  int x = threadIdx.x + blockDim.x * blockIdx.x;
+
+  int dimSize = d_cDim * d_cDim;
+  float Q;
+  float freeDeformation[2] = {0, 0};
+
+  if (x < d_lenForeground) {
+    for (int qIndex = 0; qIndex < 4; qIndex++) {
+      Q = 0;
+      freeDeformation[0] = 0;
+      freeDeformation[1] = 0;
+      // for all c_m support coordinates
+      for (int k = 0; k < dimSize; k++) {
+        // calculate radial approximation
+
+        Q = radialApproxKernel(d_qCoords[x].x[qIndex],
+                               d_qCoords[x].y[qIndex], d_tpsParams.ctrlP[k],
+                               d_tpsParams.ctrlP[k + dimSize]);
+
+        // multiply with weights
+        for (int i = 0; i < 2; i++) {
+          freeDeformation[i] += d_tpsParams.localCoeff[k + (i * dimSize)] * Q;
+        }
+      }
+
+      // note:: change
+      float tempQCoordsX = d_qCoords[x].x[qIndex];
+      float tempQCoordsY = d_qCoords[x].y[qIndex];
+
+      d_qCoords[x].x[qIndex] = (d_tpsParams.affineParam[0] * tempQCoordsX) +
+                                   (d_tpsParams.affineParam[1] * tempQCoordsY) +
+                                   d_tpsParams.affineParam[2] +
+                                   freeDeformation[0];
+
+      d_qCoords[x].y[qIndex] = (d_tpsParams.affineParam[3] * tempQCoordsX) +
+                                   (d_tpsParams.affineParam[4] * tempQCoordsY) +
+                                   d_tpsParams.affineParam[5] +
+                                   freeDeformation[1];
+    }
+  }
+}
+
+void qfTPSGPU(int h_lenForeground, QuadCoords *h_qCoords, TPSParams &h_tpsParams,
+             int h_cDim) {
+  dim3 block = dim3(128, 1, 1);
+  dim3 grid =
+      dim3((h_lenForeground + block.x - 1) / block.x, 1, 1);
+
+  QuadCoords *d_qCoords;
+  cudaMalloc(&d_qCoords, h_lenForeground * sizeof(QuadCoords));
+  CUDA_CHECK;
+
+  cudaMemcpy(d_qCoords, h_qCoords, h_lenForeground * sizeof(QuadCoords),
+             cudaMemcpyHostToDevice);
+  CUDA_CHECK;
+
+  qfTPSKernel << <grid, block>>> (h_lenForeground, d_qCoords, h_tpsParams, h_cDim);
+  CUDA_CHECK;
+
+  cudaMemcpy(h_qCoords, d_qCoords, h_lenForeground * sizeof(QuadCoords),
+             cudaMemcpyDeviceToHost);
+  CUDA_CHECK;
+
+  cudaFree(d_qCoords);
   CUDA_CHECK;
 }
 
@@ -809,20 +868,18 @@ void qTPSGPU(int h_w, int h_h, QuadCoords *h_qCoords, TPSParams &h_tpsParams,
   CUDA_CHECK;
 }
 
-__global__ void jacobianTransGPUKernel(int d_w, int d_h, float *d_jacobi, PixelCoords * d_pCoords,
+__global__ void jacobianTransGPUKernel(int d_lenForeground, float *d_jacobi, PixelCoords * d_pCoords,
                                        TPSParams d_tpsParams, int d_c_dim) {
   int x = threadIdx.x + blockDim.x * blockIdx.x;
-  int y = threadIdx.y + blockDim.y * blockIdx.y;
 
-  int indexP, indexJ;
+  int indexJ;
   int K = d_c_dim * d_c_dim;
   float squareOfNorm;
   float precomp;
   float x_j;
   float jacEl[4];
 
-  if (x < d_w && y < d_h) {
-    indexP = x + d_w * y;
+  if (x < d_lenForeground) {
 
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 2; j++) {
@@ -835,8 +892,8 @@ __global__ void jacobianTransGPUKernel(int d_w, int d_h, float *d_jacobi, PixelC
 
     for (int k = 0; k < K; k++) {
       squareOfNorm =
-          (d_tpsParams.ctrlP[k] - d_pCoords[indexP].x) * (d_tpsParams.ctrlP[k] - d_pCoords[indexP].x) +
-          (d_tpsParams.ctrlP[k + K] - d_pCoords[indexP].y) * (d_tpsParams.ctrlP[k + K] - d_pCoords[indexP].y);
+          (d_tpsParams.ctrlP[k] - d_pCoords[x].x) * (d_tpsParams.ctrlP[k] - d_pCoords[x].x) +
+          (d_tpsParams.ctrlP[k + K] - d_pCoords[x].y) * (d_tpsParams.ctrlP[k + K] - d_pCoords[x].y);
 
       if (squareOfNorm > 0.000001) {
         precomp = 2 * (1 + log(squareOfNorm));
@@ -847,47 +904,47 @@ __global__ void jacobianTransGPUKernel(int d_w, int d_h, float *d_jacobi, PixelC
       for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2; j++) {
           indexJ = i + 2 * j;
-          x_j = (j == 0 ? d_pCoords[indexP].x : d_pCoords[indexP].y);
+          x_j = (j == 0 ? d_pCoords[x].x : d_pCoords[x].y);
           jacEl[indexJ] -= precomp * d_tpsParams.localCoeff[k + i * K] *
                               (d_tpsParams.ctrlP[k + j * K] - x_j);
         }
       }
     }
 
-    d_jacobi[indexP] = jacEl[0]*jacEl[3] - jacEl[1]*jacEl[2];
+    d_jacobi[x] = jacEl[0]*jacEl[3] - jacEl[1]*jacEl[2];
   }
 }
 
 // void jacobianTrans(int w, int h, float *jacobi, PixelCoords * pCoords,
 //                    TPSParams &tpsParams, int c_dim)
 
-void jacobianTransGPU(int h_w, int h_h, float *h_jacobi, PixelCoords * h_pCoords,
+void jacobianTransGPU(int h_lenForeground, float *h_jacobi, PixelCoords * h_pCoords,
                       TPSParams h_tpsParams, int h_c_dim) {
-  dim3 block = dim3(16, 8, 1);
+  dim3 block = dim3(128, 1, 1);
   dim3 grid =
-      dim3((h_w + block.x - 1) / block.x, (h_h + block.y - 1) / block.y, 1);
+      dim3((h_lenForeground + block.x - 1) / block.x, 1, 1);
 
   float *d_jacobi;
   PixelCoords *d_pCoords;
 
-  cudaMalloc(&d_jacobi, h_w * h_h * sizeof(float));
+  cudaMalloc(&d_jacobi, h_lenForeground * sizeof(float));
   CUDA_CHECK;
-  cudaMalloc(&d_pCoords, h_w * h_h * sizeof(PixelCoords));
+  cudaMalloc(&d_pCoords, h_lenForeground * sizeof(PixelCoords));
   CUDA_CHECK;
 
-  cudaMemset(d_jacobi, 0, h_w * h_h * sizeof(float));
+  cudaMemset(d_jacobi, 0, h_lenForeground * sizeof(float));
   CUDA_CHECK;
-  cudaMemcpy(d_pCoords, h_pCoords, h_w * h_h * sizeof(PixelCoords), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_pCoords, h_pCoords, h_lenForeground * sizeof(PixelCoords), cudaMemcpyHostToDevice);
   CUDA_CHECK;
 
   jacobianTransGPUKernel << <grid, block>>>
-      (h_w, h_h, d_jacobi, d_pCoords, h_tpsParams, h_c_dim);
+      (h_lenForeground, d_jacobi, d_pCoords, h_tpsParams, h_c_dim);
   CUDA_CHECK;
 
-  cudaMemcpy(h_jacobi, d_jacobi, h_h * h_w * sizeof(float),
+  cudaMemcpy(h_jacobi, d_jacobi, h_lenForeground * sizeof(float),
              cudaMemcpyDeviceToHost);
   CUDA_CHECK;
-  cudaMemcpy(h_pCoords, d_pCoords, h_h * h_w * sizeof(PixelCoords),
+  cudaMemcpy(h_pCoords, d_pCoords, h_lenForeground * sizeof(PixelCoords),
              cudaMemcpyDeviceToHost);
   CUDA_CHECK;
 
@@ -1162,37 +1219,57 @@ void objectiveFunctionGPU(float *observationImg, float *templateImg, int ro_w,
                           PixelCoords *pObservation, int rt_w, int rt_h,
                           float t_sx, float t_sy, float o_sx, float o_sy,
                           double *residual) {
-  // printf("called!\n");
   static unsigned int call_count = 0;
   printf("call count = %d\n", call_count++);
-  int momentDeg = 9;
 
+  int momentDeg = 9;
   float resNorm = 0;
 
-  float *observationMoment = new float[momentDeg * momentDeg * ro_w * ro_h];
-  float *templateMoment = new float[momentDeg * momentDeg * rt_w * rt_h];
-
-  float sumTempMoment[momentDeg * momentDeg];
-  float sumObsMoment[momentDeg * momentDeg];
-  for (int init = 0; init < momentDeg * momentDeg; init++) {
-    sumObsMoment[init] = (float)0;
+  float sumTempMoment[momentDeg * momentDeg] ;
+  float sumObsMoment[momentDeg * momentDeg] ;
+  //init vars
+  for ( int init = 0; init < momentDeg * momentDeg; init ++){
+    sumObsMoment[init] =(float)0;
     sumTempMoment[init] = (float)0;
   }
 
+  //reszied pTemplate and pObservation to just foreground
+  int o_lenForeground;
+  int t_lenForeground;
+
+  // get the size of the foreground array
+  o_lenForeground = getNumForeground(observationImg , ro_w, ro_h) ;
+  t_lenForeground = getNumForeground(templateImg, rt_w, rt_h);
+
+  //create foreground array
+  PixelCoords * pfObservation = new PixelCoords[o_lenForeground];
+  PixelCoords * pfTemplate = new PixelCoords[t_lenForeground];
+  
+  // create image moment array
+  float * observationMoment = new float[momentDeg * momentDeg * o_lenForeground];
+  float * templateMoment= new float[momentDeg * momentDeg * t_lenForeground];
+
+  //get coordinates of foreground
+  getCoordForeground(observationImg, pObservation,ro_w, ro_h,
+                        pfObservation) ;
+  getCoordForeground(templateImg, pTemplate, rt_w,  rt_h,
+                        pfTemplate) ;
+  
   // get the jacobian at each pixel with the current tps params
-  float jacobi[rt_w * rt_h];
-  jacobianTransGPU(rt_w, rt_h, jacobi, pTemplate, tpsParams, DIM_C_REF);
-  // printf("jacobi[0] = %f, jacobi[100] = %f, jacobi[last] = %f\n", jacobi[0],
-  // jacobi[100], jacobi[rt_w * rt_h - 1]);
+  float jacobi[t_lenForeground];
+  jacobianTransGPU(t_lenForeground, jacobi, pfTemplate, tpsParams, DIM_C_REF);
 
   // calculate tps transformation of template
-  pTPSGPU(rt_w, rt_h, pTemplate, tpsParams, DIM_C_REF);
+  pTPSGPU(t_lenForeground, pfTemplate, tpsParams, DIM_C_REF);
 
   // get the moments of the TPS transformation of the template
-  imageMomentGPU(templateImg, pTemplate, rt_w, rt_h, templateMoment, momentDeg);
+  imageMomentGPU(pfTemplate, t_lenForeground, templateMoment, momentDeg);
   // get the moments of the observation
-  imageMomentGPU(observationImg, pObservation, ro_w, ro_h, observationMoment,
-              momentDeg);
+  imageMomentGPU(pfObservation, o_lenForeground, observationMoment, momentDeg);
+
+  //fast clean up
+  delete[] pfObservation;
+  delete[] pfTemplate;
 
   // Determinant of the normFactor of the normalized template image
   float detN1 = 0;
@@ -1204,21 +1281,17 @@ void objectiveFunctionGPU(float *observationImg, float *templateImg, int ro_w,
   // Sum the moments of each degree for each pixel of the two images
   for (int index = 0; index < momentDeg * momentDeg; index++) {
     // Transformed template
-    for (int y = 0; y < rt_h; y++) {
-      for (int x = 0; x < rt_w; x++) {
-        sumTempMoment[index] +=
-            templateMoment[index * (rt_h * rt_w) + (x + rt_w * y)] *
-            jacobi[x + rt_w * y];
-      }
+    for (int tempIndex = 0; tempIndex < t_lenForeground; tempIndex++) {
+      sumTempMoment[index] +=
+          templateMoment[index * t_lenForeground + tempIndex] *
+          jacobi[tempIndex];
     }
     sumTempMoment[index] /= detN2;
 
     // Observation
-    for (int y = 0; y < ro_h; y++) {
-      for (int x = 0; x < ro_w; x++) {
-        sumObsMoment[index] +=
-            observationMoment[index * (ro_h * ro_w) + (x + ro_w * y)];
-      }
+    for (int obsIndex = 0; obsIndex < o_lenForeground; obsIndex++) {
+      sumObsMoment[index] +=
+          observationMoment[index * o_lenForeground + obsIndex];
     }
     sumObsMoment[index] /= detN1;
 
@@ -1231,30 +1304,29 @@ void objectiveFunctionGPU(float *observationImg, float *templateImg, int ro_w,
     resNorm += residual[index] * residual[index];
   }
 
-  // First restriction of eq.16 (2 equations)
-  int index = momentDeg * momentDeg;
-  residual[index] = 0;
-  residual[index + 1] = 0;
-  int K = DIM_C_REF * DIM_C_REF;
-  for (int k = 0; k < K; k++) {
-    residual[index] += tpsParams.localCoeff[k];
-    residual[index + 1] += tpsParams.localCoeff[k + K];
-  }
-  resNorm += residual[index] * residual[index];
-  resNorm += residual[index + 1] * residual[index + 1];
+  // // First restriction of eq.16 (2 equations)
+  // int index = momentDeg * momentDeg;
+  // residual[index] = 0;
+  // residual[index+1] = 0;
+  // int K = DIM_C_REF*DIM_C_REF;
+  // for (int k = 0; k < K; k++) {
+  //   residual[index]   += tpsParams.localCoeff[k];
+  //   residual[index+1] += tpsParams.localCoeff[k + K];
+  // }
+  // resNorm += residual[index] * residual[index];
+  // resNorm += residual[index+1] * residual[index+1];
 
-  index += 2;
-  // Second restriction of eq.16 (4 equations)
-  for (int i = 0; i < 2; i++) {
-    for (int j = 0; j < 2; j++) {
-      residual[index + (i + 2 * j)] = 0;
-      for (int k = 0; k < K; k++) {
-        residual[index + (i + 2 * j)] +=
-            tpsParams.ctrlP[k + j * K] * tpsParams.localCoeff[k + i * K];
-      }
-      resNorm += residual[index + (i + 2 * j)] * residual[index + (i + 2 * j)];
-    }
-  }
+  // index += 2;
+  // // Second restriction of eq.16 (4 equations)
+  // for (int i = 0; i < 2; i++) {
+  //   for (int j = 0; j < 2; j++) {
+  //     residual[index + (i + 2*j)] = 0;
+  //     for (int k = 0; k < K; k++) {
+  //       residual[index + (i + 2*j)] += tpsParams.ctrlP[k + j*K] * tpsParams.localCoeff[k + i*K];
+  //     }
+  //     resNorm += residual[index + (i + 2*j)] * residual[index + (i + 2*j)];
+  //   }
+  // }
 
   // Print the residual norm
   resNorm = sqrt(resNorm);

@@ -20,12 +20,150 @@
 
 #include <opencv2/opencv.hpp>
 #include <vector>
-#include "shapeRegistration.h"
 
 #define BACKGROUND 0
 #define FOREGROUND 1
 
 #define DIM_C_REF 5
+
+
+
+/** structure to save parameters for thin plate spline
+ *
+ *  \note all the values are given from tps.mat
+ *
+ */
+struct TPSParams {
+  /** affine parameters: a
+   *  size: 2 X 3
+   */
+  float affineParam[2 * 3] = {180.750570973114,
+                -16.6979777565757,
+                              78.2371003511860,
+                26.8971153700975,
+                              230.948397768629,
+                94.8716771317028};
+  /** local coefficient: w
+   *  size: 2 X degree of moment^2
+   */
+  float localCoeff[2 * DIM_C_REF * DIM_C_REF] = {
+                43.4336100367918,
+                -254.664478125986,
+                164.260796260200,
+                209.676277829085,
+                -95.4890564425583,
+                74.0543824971685,
+                -28.7045465000123,
+                24.3081842513946,
+                12.0776119309275,
+                -110.537185437210,
+                -31.4277765118847,
+                -12.6475496029205,
+                -6.28490818780619,
+                -17.9631170829272,
+                -49.2124002833565,
+                4.55138433535774,
+                -17.8818978065982,
+                9.33577702465229,
+                -6.71131995853042,
+                63.3149271119866,
+                11.6553014436196,
+                -96.3055081066777,
+                159.231246073828,
+                -77.2364773866945,
+                29.1667360924734,
+                -114.139336032721,
+                137.564797025932,
+                9.98432048986034,
+                -79.6383549015170,
+                -40.5321424871105,
+                -170.186873110339,
+                -6.97667497242567,
+                5.22216368408785,
+                3.13977210362321,
+                113.586062434194,
+                238.165062497888,
+                49.8182500014783,
+                5.69215060608789,
+                -9.06319782846551,
+                -3.95545094132852,
+                158.306011440768,
+                17.3093272722814,
+                -1.07041222178313,
+                -29.4179219657275,
+                -193.750653161620,
+                -204.879616315085,
+                -45.7180638714529,
+                14.9243166793925,
+                -39.5796905616838,
+                185.196153840653};
+  /** conrol points: c
+   *  size: 2 X degree of moment^2
+   *
+   *  25 total points odered x then y dimensions
+   */
+  float ctrlP[2 * DIM_C_REF * DIM_C_REF] = {
+    //xx
+      -0.333333333333333,
+    -0.333333333333333, -0.333333333333333,
+      -0.333333333333333, -0.333333333333333, -0.166666666666667,
+      -0.166666666666667, -0.166666666666667, -0.166666666666667,
+      -0.166666666666667, 0, 0, 0, 0, 0, 0.166666666666667, 0.166666666666667,
+      0.166666666666667, 0.166666666666667, 0.166666666666667,
+      0.333333333333333, 0.333333333333333, 0.333333333333333,
+      0.333333333333333, 0.333333333333333,
+
+    -0.333333333333333,
+      -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
+      -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
+      0.333333333333333, -0.333333333333333, -0.166666666666667, 0,
+      0.166666666666667, 0.333333333333333, -0.333333333333333,
+      -0.166666666666667, 0, 0.166666666666667, 0.333333333333333,
+      -0.333333333333333, -0.166666666666667, 0, 0.166666666666667,
+      0.333333333333333};
+};
+/** structure to save quad coordinates of each pixel
+ *
+ *  \note need to check the order of the array index
+ *
+ * (x-0.5, y-0.5)   (x+0.5, y-0.5)
+ *  (x[0], y[0])     (x[1], y[1])
+ *             0-----0
+ *             |  0  |
+ *             |(x,y)|
+ *             0-----0
+ *  (x[3], y[3])     (x[2], y[2])
+ * (x-0.5, y+0.5)   (x+0.5, y+0.5)
+ *
+ */
+struct QuadCoords {
+  float x[4];
+  float y[4];
+};
+
+/** structure to save the middle coord of each pixel
+ *
+ */
+struct PixelCoords {
+  float x;
+  float y;
+};
+
+/** structure to save margin positions
+ * top: row (y) of the first foreground pixel from top.
+ * bottom: row (y) of the last foreground pixel from top.
+ * left: column (x) of the first foreground pixel from left.
+ * right: column (x) of the last foreground pixel from left.
+ *
+ */
+struct Margins {
+  int top = 0;
+  int bottom = 0;
+  int left = 0;
+  int right = 0;
+};
+
+
 
 using namespace std;
 using namespace cv;
@@ -101,8 +239,10 @@ void centerOfMassGPU(float *h_imgIn, int h_w, int h_h, float &h_xCentCoord,
  *
  *  \return nothing
  */
-void pCoordsNormalizationGPU(int w, int h, PixelCoords *pCoords,
-                             float xCentCoord, float yCentCoord);
+void pCoordsNormalisationGPU(int w, int h, PixelCoords *pCoords,
+                             float xCentCoord, float yCentCoord, float &normXFactor, float &normYFactor);
+
+
 
 /** normalize the quad coordinates for each pixel
  *  \param[in] w                  width of the image
@@ -113,10 +253,11 @@ void pCoordsNormalizationGPU(int w, int h, PixelCoords *pCoords,
  *
  *  \return nothing
  */
-void qCoordsNormalizationGPU(int w, int h, QuadCoords *qCoords,
-                             float xCentCoord, float yCentCoord);
+void qCoordsNormalisationGPU(int w, int h, QuadCoords *qCoords,
+                             float xCentCoord, float yCentCoord, float &normXFactor, float &normYFactor);
 
-/** inverse normalization of the image coordinates
+
+/** inverse Normalisation of the image coordinates
  *  \param[in] w                  width of the image
  *  \param[in] h                  height of the image
  *  \param[in, out] pCoords       center coordinates of each pixel
@@ -125,8 +266,14 @@ void qCoordsNormalizationGPU(int w, int h, QuadCoords *qCoords,
  *
  *  \return nothing
  */
-void pCoordsDenormalizationGPU(int w, int h, PixelCoords *pCoords,
+
+void pCoordsDenormalisationGPU(int w, int h, PixelCoords *pCoords,
                                float xCentCoord, float yCentCoord);
+
+int getNumForeground(float *imgIn, int w, int h);
+
+void getCoordForeground(float *imgIn, PixelCoords *pImgIn, int w, int h,
+                        PixelCoords *pForeground);
 
 /** calculate moment of the image
  *  \param[in] imgIn             input image
@@ -195,8 +342,9 @@ void qTPSGPU(int w, int h, QuadCoords *qCoords, TPSParams &tpsParams,
  *  \return                    nothing
  *  \note https://en.wikipedia.org/wiki/Thin_plate_spline
  */
-void jacobianTransGPU(int w, int h, float *jacobi, TPSParams &tpsParams,
-                      int mmtDegree);
+
+void jacobianTransGPU(int w, int h, float *jacobi, PixelCoords * pCoords,
+                   TPSParams tpsParams, int c_dim) ;
 /** Discription to come
  *
  * */
@@ -220,14 +368,15 @@ void transferGPU(float *imgIn, PixelCoords *pCoords, QuadCoords *qCoords,
 bool pointInPolygonGPU(int nVert, float *vertX, float *vertY, float testX,
                        float testY);
 
-void lmminObjectiveWrapperGPU(const double *par, const int m_dat, const void *data, double *residual, int *userbreak);
+void lmminObjectiveWrapperGPU(const double *par, const int m_dat,
+                              const void *data, double *residual,
+                              int *userbreak);
 
-void objectiveFunctionGPU(float *observationImg, float *templateImg,
-                        int ro_w, int ro_h,
-                        double *normalisation, TPSParams &tpsParams,
-                        QuadCoords *qTemplate, PixelCoords *pTemplate,
-                        PixelCoords *pObservation, int rt_w, int rt_h,
-                        float t_sx, float t_sy, float o_sx, float o_sy,
-                        double *residual) ;
+void objectiveFunctionGPU(float *observationImg, float *templateImg, int ro_w,
+                          int ro_h, double *normalisation, TPSParams &tpsParams,
+                          QuadCoords *qTemplate, PixelCoords *pTemplate,
+                          PixelCoords *pObservation, int rt_w, int rt_h,
+                          float t_sx, float t_sy, float o_sx, float o_sy,
+                          double *residual);
 
 #endif  // SHAPEREGISTRATION_H

@@ -1260,11 +1260,50 @@ void objectiveFunctionGPU(float *observationImg, float *templateImg, int ro_w,
   jacobianTransGPU(t_lenForeground, jacobi, pfTemplate, tpsParams, DIM_C_REF);
 
   // calculate tps transformation of template
-  pTPSGPU(t_lenForeground, pfTemplate, tpsParams, DIM_C_REF);
+  //pTPSGPU(t_lenForeground, pfTemplate, tpsParams, DIM_C_REF);
+  dim3 block = dim3(128, 1, 1);
+  dim3 grid =
+      dim3((t_lenForeground + block.x - 1) / block.x, 1, 1);
+
+  PixelCoords *d_pCoords;
+  cudaMalloc(&d_pCoords, t_lenForeground * sizeof(PixelCoords));
+  CUDA_CHECK;
+
+  cudaMemcpy(d_pCoords, pfTemplate, t_lenForeground * sizeof(PixelCoords),
+             cudaMemcpyHostToDevice);
+  CUDA_CHECK;
+
+  float *dt_mmt;
+  cudaMalloc(&dt_mmt, momentDeg * momentDeg * t_lenForeground * sizeof(float));
+  CUDA_CHECK;
+
+  // NOTE: check the size of array
+
+  cudaMemset(dt_mmt, 0, momentDeg * momentDeg * t_lenForeground * sizeof(float));
+  CUDA_CHECK;
+  
+  pTPSGPUKernel <<<grid, block>>> (t_lenForeground, d_pCoords, tpsParams, DIM_C_REF);
+  CUDA_CHECK;
 
   // get the moments of the TPS transformation of the template
-  imageMomentGPU(pfTemplate, t_lenForeground, templateMoment, momentDeg);
+  //imageMomentGPU(pfTemplate, t_lenForeground, templateMoment, momentDeg);
+
+
+  imageMomentKernel << <grid, block>>>
+      (d_pCoords, t_lenForeground, dt_mmt, momentDeg);
+
+  cudaMemcpy(templateMoment, dt_mmt,
+             momentDeg * momentDeg * t_lenForeground * sizeof(float),
+             cudaMemcpyDeviceToHost);
+
+
+
+  cudaFree(dt_mmt);
+  CUDA_CHECK;
+  cudaFree(d_pCoords);
+  CUDA_CHECK;
   // get the moments of the observation
+  // TODO this could be put into stream 0  for a slight performance gain.
   imageMomentGPU(pfObservation, o_lenForeground, observationMoment, momentDeg);
 
   //fast clean up

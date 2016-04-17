@@ -27,8 +27,8 @@ void setPixelCoords(PixelCoords *pCoords, int w, int h) {
       index = x + y * w;
 	  //bug fix was to switch indexes here.... works for now
 	  //TODO look for cause of this and repair in future!!!!
-      pCoords[index].x = (float)y;
-      pCoords[index].y = (float)x;
+      pCoords[index].x = (float)x;
+      pCoords[index].y = (float)y;
     }
   }
 }
@@ -291,8 +291,8 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
 		tpsParams.affineParam[i] = par[i];
 	}
 
-  printf("affineParam[0] = %f, [1] = %f, [2] = %f\n", tpsParams.affineParam[0], tpsParams.affineParam[1], tpsParams.affineParam[2]);
-  printf("affineParam[3] = %f, [4] = %f, [5] = %f\n", tpsParams.affineParam[3], tpsParams.affineParam[4], tpsParams.affineParam[5]);
+  // printf("affineParam[0] = %f, [1] = %f, [2] = %f\n", tpsParams.affineParam[0], tpsParams.affineParam[1], tpsParams.affineParam[2]);
+  // printf("affineParam[3] = %f, [4] = %f, [5] = %f\n", tpsParams.affineParam[3], tpsParams.affineParam[4], tpsParams.affineParam[5]);
 
 	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
 		tpsParams.localCoeff[i] = par[i+6];
@@ -410,10 +410,11 @@ void lmminObjectiveWrapper(const double *par, const int m_dat, const void *data,
   // printf("residual first = %f, last = %f\n", residual[0], residual[80]);
 
   // Delete the allocated pointers
-  delete templateImg;
-  delete observationImg;
-  delete pTemplate;
-  delete qTemplate;
+  delete[] templateImg;
+  delete[] observationImg;
+  delete[] pTemplate;
+  delete[] qTemplate;
+  delete[] pObservation;
 
   return;
 }
@@ -426,7 +427,9 @@ void objectiveFunction(float *observationImg, float *templateImg,
                         PixelCoords *pObservation, int rt_w, int rt_h,
                         float t_sx, float t_sy, float o_sx, float o_sy,
                         double *residual) {
-  printf("called!\n");
+  // printf("called!\n");
+  static unsigned int call_count = 0;
+  printf("call count = %d\n", call_count++);
   int momentDeg = 9;
 
   float resNorm = 0;
@@ -445,7 +448,7 @@ void objectiveFunction(float *observationImg, float *templateImg,
   // get the jacobian at each pixel with the current tps params
   float jacobi[rt_w * rt_h];
   jacobianTrans(rt_w, rt_h, jacobi, pTemplate, tpsParams, DIM_C_REF);
-  printf("jacobi[0] = %f, jacobi[100] = %f, jacobi[last] = %f\n", jacobi[0], jacobi[100], jacobi[rt_w * rt_h - 1]);
+  // printf("jacobi[0] = %f, jacobi[100] = %f, jacobi[last] = %f\n", jacobi[0], jacobi[100], jacobi[rt_w * rt_h - 1]);
 
   // calculate tps transformation of template
   pTPS(rt_w, rt_h, pTemplate, tpsParams, DIM_C_REF);

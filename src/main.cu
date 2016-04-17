@@ -261,10 +261,6 @@ int main(int argc, char **argv) {
   /*transfer(resizedTemplate, pResizedObservation, qTemplate, rt_w, rt_h, ro_w, ro_h,*/
            /*resizedImOut);*/
 
-
-  /*convert_layered_to_mat(resizedImgOut, resizedImOut);*/
-  /*showImage("Resized Output", resizedImgOut, 800, 100);*/
-
 	/**printf("[Main] tpsParams affine first: %f, last: %f\n", tpsParams.affineParam[0], tpsParams.affineParam[5]);
 	printf("[Main] tpsParams localC first: %f, last: %f\n", tpsParams.localCoeff[0], tpsParams.localCoeff[2 * DIM_C_REF * DIM_C_REF - 1]);
 	printf("[Main] rt_w = %d, rt_h = %d, ro_w = %d, ro_h = %d\n", rt_w, rt_h, ro_w, ro_h);
@@ -372,23 +368,83 @@ int main(int argc, char **argv) {
 
 	// Configuration parameters for the lmmin()
 	// Number of equations
-	int m_dat = 87; // TODO: add the 6 extra equations
+	int m_dat = 87;
+	// Parameter collection for tuning the fit procedure.
 	lm_control_struct control = lm_control_float;
+	// Verbosity level
+	// control.verbosity = 31;
+	// Relative error desired in the sum of squares.
+	control.ftol = 0.0001;
+	// Relative error between last two approximations.
+	control.xtol = 0.0001;
+	// max function evaluations = patience*n_par
+	control.patience = 1;
+	// Progress messages will be written to this file. (NULL --> stdout)
+	control.msgfile = NULL;
+	// Status object
 	lm_status_struct status;
 
 	// Call the lmmin() using the wrapper for the objective function
 	lmmin( sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status );
 
-	// double residual[87] = {};
-	// objectiveFunction(resizedObservation, resizedTemplate, ro_w, ro_h,
-  //                   normFactor, tpsParams, qTemplate, pTemplate,
-  //                   pResizedObservation, rt_w, rt_h, residual);
+	// Translate the found vector of parameters to the tpsParams
+	// Unack the affineParam
+	printf("TPSParam:\n");
+	for (int i = 0; i < 6; i++) {
+		tpsParams.affineParam[i] = par[i];
+		printf("%f\n", tpsParams.affineParam[i]); // Debug
+	}
+	// Unpack the localCoeff
+	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
+		tpsParams.localCoeff[i] = par[i+6];
+		printf("%f\n", tpsParams.localCoeff[i]); // Debug
+	}
 
+	// compensating for the translation caused by image cropping (see Matlab)
+	float t_tx = -(xCentTemplate    /**+ templateMargins.top    */) * t_sx;
+	float t_ty = -(yCentTemplate    /**+ templateMargins.left   */) * t_sy;
+	float o_tx = -(xCentObservation /**+ observationMargins.top */) * o_sx;
+	float o_ty = -(yCentObservation /**+ observationMargins.left*/) * o_sy;
+	// Debug
+	printf("t_sx = %f, t_sy = %f, t_tx = %f, t_ty = %f", t_sx, t_sy, t_tx, t_ty);
+	printf("o_sx = %f, o_sy = %f, o_tx = %f, o_ty = %f", o_sx, o_sy, o_tx, o_ty);
 
-	// objectiveFunction(observationImg, templateImg, ro_w, ro_h,
-  //                   normalization, tpsParams, qTemplate, pTemplate,
-  //                   pObservation, rt_w, rt_h, residual);
+	// Denormalize the coefficients for the final transformation
+	for (int j = 0; j < 3; j++) {
+		tpsParams.affineParam[j] /= o_sx;
+		tpsParams.affineParam[3+j] /= o_sy;
+	}
+	printf("affineParam[2] = %f, o_tx = %f, o_sx = %f, division = %f\n", tpsParams.affineParam[2], o_tx, o_sx, o_tx / o_sx); // Debug
+	tpsParams.affineParam[2] -= o_tx / o_sx;
+	tpsParams.affineParam[5] -= o_ty / o_sy;
 
+	for (int j = 0; j < DIM_C_REF * DIM_C_REF; j++) {
+		tpsParams.localCoeff[j] /= o_sx;
+		tpsParams.localCoeff[DIM_C_REF * DIM_C_REF + j] /= o_sy;
+	}
+
+	// Debug
+	printf("Denormalized TPSParam:\n");
+	for (int i = 0; i < 6; i++) {
+		printf("%f\n", tpsParams.affineParam[i]);
+	}
+	for (int i = 0; i < 2 * DIM_C_REF * DIM_C_REF; i++) {
+		printf("%f\n", tpsParams.localCoeff[i]);
+	}
+	//
+
+	// Apply the decided transformation on the normalized quad coordinates of the template
+	qTPS(rt_w, rt_h, qTemplate, tpsParams, DIM_C_REF);
+
+	// Transfer (map) the transformed quad coordinates to pixel coordinates.
+	// Store the result to the pRegistered
+	PixelCoords *pRegistered = new PixelCoords[ro_w * ro_h];
+	setPixelCoords(pRegistered, ro_w, ro_h);
+	transfer(resizedTemplate, pRegistered, qTemplate, rt_w, rt_h, ro_w, ro_h, resizedImOut);
+
+	// Convert and show the transformed output
+	convert_layered_to_mat(resizedImgOut, resizedImOut);
+	showImage("Resized Output", resizedImgOut, 800, 100);
 
   //stop timer here
   timer.end();
@@ -404,9 +460,13 @@ int main(int argc, char **argv) {
   // free allocated arrays
   delete[] observationImg;
   delete[] templateImg;
-
   delete[] imgOut;
   delete[] resizedImOut;
+	delete[] qTemplate;
+	delete[] pTemplate;
+	delete[] pResizedObservation;
+	delete[] par;
+	delete[] data;
 
   // close all opencv windows
   cvDestroyAllWindows();

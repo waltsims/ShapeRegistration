@@ -40,7 +40,7 @@ if(GPU)
 			--compiler-options -Wall )
 
 		# Specify the binary name and the source files to build
-		cuda_add_executable(sr src/main.cu src/helper.cu src/helper.h src/shapeRegistration.cu src/shapeRegistration.h) #src/testing.cu src/testing.h) 
+		cuda_add_executable(sr src/main.cu src/helper.cu src/helper.h src/shapeRegistration.cu src/shapeRegistration.h src/shapeRegistrationGPU.h src/shapeRegistrationGPU.cu) 
 		target_link_libraries(sr ${lm}  ${CUDA_LIBARIES} ${OpenCV_LIBS})
 
 	else()

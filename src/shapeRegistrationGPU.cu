@@ -1078,7 +1078,7 @@ void objectiveFunctionGPU(float *observationImg, float *templateImg, int ro_w,
                           PixelCoords *pObservation, int rt_w, int rt_h,
                           float t_sx, float t_sy, float o_sx, float o_sy,
                           double *residual) {
-  static unsigned int call_count = 0;
+  //static unsigned int call_count = 0;
   // printf("call count = %d\n", call_count++);
 
   int momentDeg = 9;

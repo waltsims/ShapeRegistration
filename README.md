@@ -44,6 +44,21 @@ with the following flags.
 -t [template image] -o [observation image]
 ```
 
+To adjust solver parameters, the following flags can be used
+
+```sh
+
+-lp [lm solver patience] 
+-le [lm solver jacobian step size] 
+-lftol [relative error for the residual] 
+-lxtol [relative error between approximations] 
+-ztol[degeneracy measurment] 
+-lsb[step bound] 
+-lsd[scale parameters] 
+-lv[solver verbosity level]
+
+```
+
 ## Style Guide
 
 For development you should install `clang`. We use `clang`'s `clang-format` to keep our coding style consistent.

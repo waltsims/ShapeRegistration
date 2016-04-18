@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
   }
 
   // maximum number of iterations for the Levenberg-Marquardt (patience)
-  int patience = 25;
+  int patience = 125;
   getParam("lp", patience, argc, argv);
   if (patience < 1) {
     cerr << "ERROR: the patience for the Levenberg-Marquardt must be >=1"

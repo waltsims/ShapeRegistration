@@ -53,8 +53,8 @@ is a reasonable guideline, used by a large organization to great success and at 
 
 You can use the script scripts/format to automatically reformat all the source files. Alternatively, try one of the integrations of clang-format into various editors/IDEs. ( comming soon )
 
-Aknowledgements
+###Acknowledgements
 
 Our code was created using the framework provided in the course as a starting point.
 
-Much of this document was based on the knowledge passed on by @cqql.
+Much of this document was based on the knowledge passed on by [@cqql](http://cqql.de).

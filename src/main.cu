@@ -370,7 +370,9 @@ int main(int argc, char **argv) {
 
   // Call the lmmin() using the wrapper for the objective function
   printf("\nSolving the system...\n");
-  lmmin(sizePar, par, m_dat, data, lmminObjectiveWrapperGPU, &control, &status);
+  lmmin(sizePar, par, m_dat, data, lmminObjectiveWrapper, &control, &status);
+  // lmmin(sizePar, par, m_dat, data, lmminObjectiveWrapperGPU, &control,
+  // &status);
   printf("Solving completed!\n\n");
 
   // Translate the found vector of parameters to the tpsParams

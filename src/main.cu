@@ -139,12 +139,60 @@ int main(int argc, char **argv) {
 
   // maximum number of iterations for the Levenberg-Marquardt (patience)
   int patience = 25;
-  getParam("l", patience, argc, argv);
+  getParam("lp", patience, argc, argv);
   if (patience < 1) {
     cerr << "ERROR: the patience for the Levenberg-Marquardt must be >=1"
          << endl;
     return 1;
   }
+
+  // Relative error desired in the sum of squares.
+  double ftol = 0.0001;
+  getParam("lftol", ftol, argc, argv);
+  if (ftol <= 0) {
+    cerr << "ERROR: the lftol must be positive" << endl;
+    return 1;
+  }
+
+  // Relative error between last two approximations.
+  double xtol = 0.0001;
+  getParam("lxtol", xtol, argc, argv);
+  if (xtol <= 0) {
+    cerr << "ERROR: the lxtol must be positive" << endl;
+    return 1;
+  }
+
+  double gtol = ftol;
+  getParam("lgtol", gtol, argc, argv);
+  if (gtol <= 0) {
+    cerr << "ERROR: the lgtol must be positive" << endl;
+    return 1;
+  }
+
+  double epsilon = ftol;
+  getParam("le", epsilon, argc, argv);
+  if (epsilon <= 0) {
+    cerr << "ERROR: the le must be positive" << endl;
+    return 1;
+  }
+
+  double stepb = 100;
+  getParam("lsb", stepb, argc, argv);
+  if (stepb <= 0) {
+    cerr << "ERROR: the lsb must be positive" << endl;
+    return 1;
+  }
+
+  int scaled = 1;
+  getParam("lsd", scaled, argc, argv);
+  if (scaled != 0 and scaled != 1) {
+    cerr << "ERROR: the lsd must be either 0 or 1" << endl;
+    return 1;
+  }
+
+  // Verbosity level
+  int verb = 1;
+  getParam("lv", verb, argc, argv);
 
   // Load the input image using opencv (load as "grayscale", since we are
   // working only with binary shapes of single channel)
@@ -350,21 +398,56 @@ int main(int argc, char **argv) {
   // Configuration parameters for the lmmin()
   // Number of equations
   int m_dat = 87;
-  // Parameter collection for tuning the fit procedure.
+
+  // Parameter collection for tuning the fit procedure. In most cases, the
+  // default &lm_control_double is adequate. If f is only computed with
+  // single-precision accuracy, &lm_control_float should be used. See also
+  // below, NOTES on initializing parameter records.
   lm_control_struct control = lm_control_float;
-  // Verbosity level
-  control.verbosity = 1;
-  // Relative error desired in the sum of squares.
-  control.ftol = 0.0001;
-  // Relative error between last two approximations.
-  control.xtol = 0.0001;
-  // max function evaluations = patience*n_par
+
+  // Relative error desired in the sum of squares. Recommended setting: somewhat
+  // above machine precision; less if fvec is computed with reduced accuracy.
+  control.ftol = ftol;
+  printf("\nSolver ftol: %f\n", control.ftol);
+
+  // Relative error between last two approximations. Recommended setting: as
+  // ftol.
+  control.xtol = xtol;
+  printf("Solver xtol: %f\n", control.xtol);
+
+  // A measure for degeneracy. Recommended setting: as ftol.
+  control.gtol = ftol;
+  printf("Solver gtol: %f\n", control.gtol);
+
+  // Step used to calculate the Jacobian. Recommended setting: as ftol, but
+  // definitely less than the accuracy of fvec.
+  control.epsilon = epsilon;
+  printf("Solver epsilon: %f\n", control.epsilon);
+
+  // Initial bound to steps in the outer loop, generally between 0.01 and 100;
+  // recommended value is 100.
+  control.stepbound = stepb;
+  printf("Solver stepbound: %f\n", control.stepbound);
+
+  // Used to set the maximum number of function evaluations to patience*n_par.
   control.patience = patience;
-  printf("Solver contol.patience: %d (%d objective function calls)\n",
+  printf("Solver patience: %d (%d objective function calls)\n",
          control.patience, control.patience * 56);
 
-  // Progress messages will be written to this file. (NULL --> stdout)
+  // Logical switch (0 or 1). If 1, then scale parameters to their initial
+  // value. This is the recommended setting.
+  control.scale_diag = scaled;
+  printf("Solver scale_diag: %d\n", control.scale_diag);
+
+  // Progress messages will be written to this file. Typically stdout or stderr.
+  // The value NULL will be interpreted as stdout.
   control.msgfile = NULL;
+
+  // If nonzero, some progress information from within the LM algorithm is
+  // written to control.stream.
+  control.verbosity = verb;
+  printf("Solver verbosity level: %d\n", control.verbosity);
+
   // Status object
   lm_status_struct status;
 
@@ -442,15 +525,16 @@ int main(int argc, char **argv) {
   cutMargins(registered, reg_w, reg_h, resizedRegistered, rreg_w, rreg_h,
              registeredMargins);
 
+  // stop timer here
+  timer.end();
+  float t = timer.get();  // elapsed time in seconds
+  cout << "time: " << t * 1000 << " ms" << endl;
+
   // Convert and show the transformed output
   cv::Mat resizedImRegistered(rreg_h, rreg_w, CV_32FC1);
   convert_layered_to_mat(resizedImRegistered, resizedRegistered);
   showImage("Registered shape", resizedImRegistered, 520, 100);
 
-  // stop timer here
-  timer.end();
-  float t = timer.get();  // elapsed time in seconds
-  cout << "time: " << t * 1000 << " ms" << endl;
   // wait for key inputs
   cv::waitKey(0);
 
